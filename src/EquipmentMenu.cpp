@@ -1,8 +1,8 @@
 #include "PCH.h"
 #include "EquipmentMenu.h"
 #include "KidWriter.h"
-#include "MessageBox.h"
 #include "Settings.h"
+#include "UIExtensionsMenu.h"
 
 namespace
 {
@@ -26,10 +26,7 @@ namespace
     {
         std::string actorName;
         std::vector<EquipmentItem> items;
-        std::size_t page{ 0 };
     };
-
-    constexpr std::size_t kItemsPerPage = 6;
 
     constexpr std::array<SlotDescription, 32> kBipedSlots{
         SlotDescription{ BipedSlot::kHead, 30 },
@@ -180,7 +177,7 @@ namespace
             }
 
             if (!first) {
-                output << ", ";
+                output << ',';
             }
 
             output << slot.number;
@@ -216,7 +213,7 @@ namespace
         });
     }
 
-    std::string BuildButtonLabel(const EquipmentItem& item)
+    std::string BuildListLabel(const EquipmentItem& item)
     {
         const auto& settings = NPCEquipmentViewer::Settings::GetSingleton();
         std::ostringstream output;
@@ -227,7 +224,7 @@ namespace
         }
 
         if (settings.ShowSlots() && !item.slots.empty()) {
-            output << " | Slots: " << item.slots;
+            output << " | S:" << item.slots;
         }
 
         if (settings.ShowFormID()) {
@@ -258,75 +255,62 @@ namespace
         }
     }
 
-    void ShowMenuPage(const std::shared_ptr<MenuState>& state)
+    void QueueGameTask(std::function<void()> task)
+    {
+        if (const auto* taskInterface = SKSE::GetTaskInterface(); taskInterface != nullptr) {
+            taskInterface->AddTask(std::move(task));
+        }
+    }
+
+    void ShowVerticalMenu(const std::shared_ptr<MenuState>& state)
     {
         if (!state || state->items.empty()) {
             return;
         }
 
-        const auto pageCount = (state->items.size() + kItemsPerPage - 1) / kItemsPerPage;
-        if (state->page >= pageCount) {
-            state->page = pageCount - 1;
+        if (!NPCEquipmentViewer::UIExtensionsMenu::IsAvailable()) {
+            RE::DebugMessageBox(
+                "UIExtensions is required to display the equipment list vertically. "
+                "Install and enable UIExtensions, then restart Skyrim.");
+            return;
         }
 
-        const auto firstItem = state->page * kItemsPerPage;
-        const auto lastItem = std::min(firstItem + kItemsPerPage, state->items.size());
-        const auto visibleItemCount = lastItem - firstItem;
-        const bool hasPreviousPage = state->page > 0;
-        const bool hasNextPage = state->page + 1 < pageCount;
+        std::vector<std::string> entries;
+        entries.reserve(state->items.size());
 
-        std::ostringstream body;
-        body << "Equipment worn by " << state->actorName << "\n\n"
-             << "Select an armor, clothing, shield, or accessory to add it to "
-             << "Custom_modesty_KID.ini.\n"
-             << "Use the keyboard or controller to navigate.\n\n"
-             << "Page " << (state->page + 1) << " of " << pageCount;
-
-        std::vector<std::string> buttons;
-        buttons.reserve(visibleItemCount + 3);
-
-        for (auto index = firstItem; index < lastItem; ++index) {
-            buttons.push_back(BuildButtonLabel(state->items[index]));
+        for (const auto& item : state->items) {
+            entries.push_back(BuildListLabel(item));
         }
 
-        if (hasPreviousPage) {
-            buttons.emplace_back("Previous page");
-        }
-        if (hasNextPage) {
-            buttons.emplace_back("Next page");
-        }
-        buttons.emplace_back("Close");
+        const auto notification = "Equipment worn by " + state->actorName;
+        RE::DebugNotification(notification.c_str());
 
-        const bool opened = NPCEquipmentViewer::MessageBox::Show(
-            body.str(),
-            buttons,
-            [state, firstItem, visibleItemCount, hasPreviousPage, hasNextPage](const std::uint32_t selectedIndex) {
-                if (selectedIndex < visibleItemCount) {
-                    const auto& item = state->items[firstItem + selectedIndex];
-                    const auto result = NPCEquipmentViewer::KidWriter::AddArmor(item.armor, item.displayName);
-                    NotifyWriteResult(result);
+        const bool opened = NPCEquipmentViewer::UIExtensionsMenu::Show(
+            entries,
+            [state](const std::int32_t selectedIndex) {
+                if (selectedIndex == -2) {
+                    QueueGameTask([]() {
+                        RE::DebugNotification("Could not open the UIExtensions equipment list.");
+                    });
                     return;
                 }
 
-                auto commandIndex = static_cast<std::size_t>(selectedIndex - visibleItemCount);
-
-                if (hasPreviousPage) {
-                    if (commandIndex == 0) {
-                        --state->page;
-                        ShowMenuPage(state);
-                        return;
-                    }
-                    --commandIndex;
+                if (selectedIndex < 0 ||
+                    static_cast<std::size_t>(selectedIndex) >= state->items.size()) {
+                    return;
                 }
 
-                if (hasNextPage && commandIndex == 0) {
-                    ++state->page;
-                    ShowMenuPage(state);
-                }
+                QueueGameTask([state, selectedIndex]() {
+                    const auto& item = state->items[static_cast<std::size_t>(selectedIndex)];
+                    const auto result = NPCEquipmentViewer::KidWriter::AddArmor(
+                        item.armor,
+                        item.displayName);
+                    NotifyWriteResult(result);
+                });
             });
 
         if (!opened) {
-            RE::DebugNotification("Could not open the equipment selection menu.");
+            RE::DebugNotification("Could not initialize the UIExtensions equipment list.");
         }
     }
 }
@@ -382,6 +366,6 @@ namespace NPCEquipmentViewer
             return;
         }
 
-        ShowMenuPage(state);
+        ShowVerticalMenu(state);
     }
 }
