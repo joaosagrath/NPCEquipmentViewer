@@ -1,0 +1,48 @@
+name: Compilar plugin SKSE
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar compilador do Visual Studio
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Instalar Ninja
+        shell: pwsh
+        run: choco install ninja --no-progress -y
+
+      - name: Preparar vcpkg
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "$env:RUNNER_TEMP\vcpkg"
+          & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
+          "VCPKG_ROOT=$env:RUNNER_TEMP\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Configurar
+        shell: pwsh
+        run: cmake --preset release
+
+      - name: Compilar
+        shell: pwsh
+        run: cmake --build --preset release
+
+      - name: Compactar pacote
+        shell: pwsh
+        run: Compress-Archive -Path "build\release\package\*" -DestinationPath "NPCEquipmentViewer-1.0.0.zip"
+
+      - name: Publicar artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: NPCEquipmentViewer-1.0.0
+          path: NPCEquipmentViewer-1.0.0.zip
