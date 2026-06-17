@@ -9,6 +9,9 @@ namespace NPCEquipmentViewer
 
         [[nodiscard]] static bool IsAvailable();
 
+        static bool RegisterPapyrusFunctions(
+            RE::BSScript::IVirtualMachine* virtualMachine);
+
         static bool Show(
             const std::vector<std::string>& entries,
             SelectionCallback callback);
