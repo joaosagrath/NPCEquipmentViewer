@@ -64,13 +64,20 @@ namespace
             return {};
         }
 
+        auto formID = form->GetFormID();
+        if (!form->IsDynamicForm() && form->GetFile(0) != nullptr) {
+            formID = form->GetLocalFormID();
+        }
+
+        const auto minimumWidth = formID > 0x00FFFFFF ? 8 : 6;
+
         std::ostringstream output;
         output << "0x"
                << std::uppercase
                << std::hex
-               << std::setw(6)
+               << std::setw(minimumWidth)
                << std::setfill('0')
-               << form->GetLocalFormID();
+               << formID;
         return output.str();
     }
 
