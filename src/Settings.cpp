@@ -67,10 +67,10 @@ namespace NPCEquipmentViewer
 
     void Settings::Load()
     {
-        keyCode_ = 0x25;
-        showFormID_ = true;
+        keyCode_ = 0x23;
+        showFormID_ = false;
         showSlots_ = true;
-        showItemType_ = true;
+        showItemType_ = false;
 
         const auto iniPath = GetPluginDirectory() / "NPCEquipmentViewer.ini";
         std::ifstream input(iniPath);
@@ -113,7 +113,7 @@ namespace NPCEquipmentViewer
                         keyCode_ = static_cast<std::uint32_t>(parsedValue);
                     }
                 } catch (...) {
-                    keyCode_ = 0x25;
+                    keyCode_ = 0x23;
                 }
             } else if (key == "showformid") {
                 showFormID_ = ParseBoolean(value, showFormID_);
