@@ -1,6 +1,8 @@
 #include "PCH.h"
 #include "UIExtensionsMenu.h"
 
+#include <atomic>
+
 namespace
 {
     using ScriptObject = RE::BSTSmartPointer<RE::BSScript::Object>;
@@ -40,7 +42,7 @@ namespace
         std::vector<std::string> entries;
         NPCEquipmentViewer::UIExtensionsMenu::SelectionCallback callback;
         std::size_t nextEntry{ 0 };
-        bool completed{ false };
+        std::atomic_bool completed{ false };
     };
 
     RE::BSScript::IVirtualMachine* GetVirtualMachine()
@@ -64,15 +66,38 @@ namespace
         const std::shared_ptr<MenuRequest>& request,
         const std::int32_t selectedIndex)
     {
-        if (!request || request->completed) {
+        if (!request || request->completed.exchange(true)) {
             return;
         }
-
-        request->completed = true;
 
         if (request->callback) {
             request->callback(selectedIndex);
         }
+    }
+
+    bool QueueGameTask(
+        const std::shared_ptr<MenuRequest>& request,
+        std::function<void()> task)
+    {
+        if (!request || request->completed.load()) {
+            return false;
+        }
+
+        const auto* taskInterface = SKSE::GetTaskInterface();
+        if (taskInterface == nullptr) {
+            CompleteRequest(request, kMenuError);
+            return false;
+        }
+
+        taskInterface->AddTask([
+            request,
+            task = std::move(task)]() mutable {
+            if (!request->completed.load() && task) {
+                task();
+            }
+        });
+
+        return true;
     }
 
     bool DispatchMethod(
@@ -96,6 +121,27 @@ namespace
         }
 
         return true;
+    }
+
+    void ReadSelectedIndex(const std::shared_ptr<MenuRequest>& request);
+    void OpenListMenu(const std::shared_ptr<MenuRequest>& request);
+    void AddNextEntry(const std::shared_ptr<MenuRequest>& request);
+
+    void ResetListMenu(const std::shared_ptr<MenuRequest>& request)
+    {
+        const bool dispatched = DispatchMethod(
+            request->menu,
+            "ResetMenu",
+            RE::MakeFunctionArguments(),
+            [request](RE::BSScript::Variable) {
+                QueueGameTask(request, [request]() {
+                    AddNextEntry(request);
+                });
+            });
+
+        if (!dispatched) {
+            CompleteRequest(request, kMenuError);
+        }
     }
 
     void ReadSelectedIndex(const std::shared_ptr<MenuRequest>& request)
@@ -125,7 +171,9 @@ namespace
             "OpenMenu",
             RE::MakeFunctionArguments(),
             [request](RE::BSScript::Variable) {
-                ReadSelectedIndex(request);
+                QueueGameTask(request, [request]() {
+                    ReadSelectedIndex(request);
+                });
             });
 
         if (!dispatched) {
@@ -146,13 +194,17 @@ namespace
             request->menu,
             "AddEntryItem",
             RE::MakeFunctionArguments(
-                std::string(request->entries[currentIndex]),
-                std::int32_t{ -1 },
-                static_cast<std::int32_t>(currentIndex),
-                false),
-            [request](RE::BSScript::Variable) {
+                std::string(request->entries[currentIndex])),
+            [request](RE::BSScript::Variable result) {
+                if (!result.IsInt()) {
+                    CompleteRequest(request, kMenuError);
+                    return;
+                }
+
                 ++request->nextEntry;
-                AddNextEntry(request);
+                QueueGameTask(request, [request]() {
+                    AddNextEntry(request);
+                });
             });
 
         if (!dispatched) {
@@ -200,10 +252,14 @@ namespace NPCEquipmentViewer
                 return;
             }
 
-            AddNextEntry(request);
+            QueueGameTask(request, [request]() {
+                ResetListMenu(request);
+            });
         });
 
-        auto* arguments = RE::MakeFunctionArguments(std::string("UIListMenu"), true);
+        auto* arguments = RE::MakeFunctionArguments(
+            std::string("UIListMenu"),
+            true);
 
         if (!vm->DispatchStaticCall(
                 "UIExtensions",
