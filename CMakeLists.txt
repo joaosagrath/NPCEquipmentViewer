@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(NPCEquipmentViewer VERSION 1.1.0 LANGUAGES CXX)
+project(NPCEquipmentViewer VERSION 1.2.0 LANGUAGES CXX)
 
 if(DEFINED ENV{SKYRIM_FOLDER} AND IS_DIRECTORY "$ENV{SKYRIM_FOLDER}/Data")
     set(OUTPUT_FOLDER "$ENV{SKYRIM_FOLDER}/Data")
@@ -19,6 +19,8 @@ set(SOURCES
     src/Settings.cpp
     src/MessageBox.h
     src/MessageBox.cpp
+    src/UIExtensionsMenu.h
+    src/UIExtensionsMenu.cpp
     src/KidWriter.h
     src/KidWriter.cpp
     src/EquipmentMenu.h
