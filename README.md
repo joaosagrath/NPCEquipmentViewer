@@ -9,14 +9,15 @@ Ao colocar um NPC no crosshair e pressionar a tecla configurada, o mod abre uma 
 - alvo identificado pelo crosshair;
 - tecla configurável por arquivo INI;
 - lista vertical navegável por teclado ou controle;
+- exibição simplificada com nome e slots do equipamento;
+- lista ampliada em 50% para facilitar a leitura;
 - roupas, armaduras, escudos e acessórios equipados;
 - slots de armadura entre 30 e 61;
-- FormID opcional na lista;
 - criação automática de `Custom_modesty_KID.ini`;
 - regras KID usando FormID local e plugin de origem;
 - comentário com nome e FormID antes de cada regra;
 - prevenção de entradas duplicadas;
-- sem ESP ou scripts Papyrus próprios.
+- sem ESP.
 
 ## Dependências para usar o mod compilado
 
@@ -30,6 +31,9 @@ O projeto usa CommonLibSSE-NG, cuja proposta é gerar um único plugin para SE/A
 
 ```text
 Data/
+├── Scripts/
+│   ├── NPCEquipmentViewerMenu.pex
+│   └── NPCEquipmentViewerNative.pex
 └── SKSE/
     └── Plugins/
         ├── NPCEquipmentViewer.dll
@@ -47,10 +51,16 @@ Data/Custom_modesty_KID.ini
 1. Instale e ative o UIExtensions.
 2. Inicie o Skyrim pelo SKSE.
 3. Coloque um NPC no centro do crosshair.
-4. Pressione `K`.
+4. Pressione `H`.
 5. Navegue verticalmente pelos equipamentos usando o teclado ou controle.
 6. Pressione `Enter` ou o botão de confirmação do controle para adicionar o item ao KID.
 7. Reinicie o Skyrim para o Keyword Item Distributor processar a nova regra.
+
+Cada item é exibido neste formato:
+
+```text
+DXFII WildDreams All but Bra_Panty | S:32
+```
 
 ## Formato gerado
 
@@ -77,13 +87,15 @@ Configuração padrão:
 
 ```ini
 [General]
-KeyCode=0x25
-ShowFormID=true
+KeyCode=0x23
+ShowFormID=false
 ShowSlots=true
-ShowItemType=true
+ShowItemType=false
 ```
 
-`0x25` é o código DirectInput da tecla `K`. Consulte `KEYCODES_PT-BR.md` para outros códigos.
+`0x23` é o código DirectInput da tecla `H`. Consulte `KEYCODES_PT-BR.md` para outros códigos.
+
+A lista sempre exibe somente o nome do item e seus slots. As opções antigas de tipo e FormID foram mantidas no arquivo apenas por compatibilidade.
 
 O Skyrim deve ser reiniciado depois de alterar o INI.
 
