@@ -1,7 +1,6 @@
 #include "PCH.h"
 #include "EquipmentMenu.h"
 #include "KidWriter.h"
-#include "Settings.h"
 #include "UIExtensionsMenu.h"
 
 namespace
@@ -62,22 +61,6 @@ namespace
         SlotDescription{ BipedSlot::kModMisc2, 60 },
         SlotDescription{ BipedSlot::kFX01, 61 }
     };
-
-    std::string FormatFormID(const RE::TESForm* form)
-    {
-        if (form == nullptr) {
-            return {};
-        }
-
-        std::ostringstream output;
-        output << "0x"
-               << std::uppercase
-               << std::hex
-               << std::setw(8)
-               << std::setfill('0')
-               << form->GetFormID();
-        return output.str();
-    }
 
     std::string GetFormName(RE::TESForm* form, RE::InventoryEntryData* entryData = nullptr)
     {
@@ -215,20 +198,11 @@ namespace
 
     std::string BuildListLabel(const EquipmentItem& item)
     {
-        const auto& settings = NPCEquipmentViewer::Settings::GetSingleton();
         std::ostringstream output;
         output << item.displayName;
 
-        if (settings.ShowItemType()) {
-            output << " [" << item.type << ']';
-        }
-
-        if (settings.ShowSlots() && !item.slots.empty()) {
+        if (!item.slots.empty()) {
             output << " | S:" << item.slots;
-        }
-
-        if (settings.ShowFormID()) {
-            output << " | " << FormatFormID(item.armor);
         }
 
         return output.str();
