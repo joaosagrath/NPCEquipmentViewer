@@ -75,7 +75,7 @@ namespace
         return "Item sem nome";
     }
 
-    std::string GetArmorType(RE::TESObjectARMO* armor)
+        std::string GetArmorType(RE::TESObjectARMO* armor)
     {
         if (armor == nullptr) {
             return "Equipamento";
@@ -84,37 +84,53 @@ namespace
         if (armor->IsShield()) {
             return "Escudo";
         }
-        if (armor->IsHelmet()) {
-            return "Cabeca";
-        }
-        if (armor->IsCirclet()) {
+
+        if (armor->HasPartOf(BipedSlot::kCirclet)) {
             return "Tiara";
         }
-        if (armor->IsChestpiece()) {
+
+        if (armor->HasPartOf(BipedSlot::kHead)) {
+            return "Cabeca";
+        }
+
+        if (armor->HasPartOf(BipedSlot::kBody)) {
             return armor->IsClothing() ? "Roupa" : "Corpo";
         }
-        if (armor->IsGauntlets()) {
+
+        if (armor->HasPartOf(BipedSlot::kHands) ||
+            armor->HasPartOf(BipedSlot::kForearms)) {
             return "Maos";
         }
-        if (armor->IsBoots()) {
+
+        if (armor->HasPartOf(BipedSlot::kFeet) ||
+            armor->HasPartOf(BipedSlot::kCalves)) {
             return "Pes";
         }
-        if (armor->IsAccessory()) {
+
+        if (armor->HasPartOf(BipedSlot::kAmulet) ||
+            armor->HasPartOf(BipedSlot::kRing) ||
+            armor->HasPartOf(BipedSlot::kEars) ||
+            armor->HasPartOf(BipedSlot::kModMouth) ||
+            armor->HasPartOf(BipedSlot::kModNeck) ||
+            armor->HasPartOf(BipedSlot::kModFaceJewelry)) {
             return "Acessorio";
         }
+
         if (armor->IsClothing()) {
             return "Roupa";
         }
+
         if (armor->IsHeavyArmor()) {
             return "Armadura pesada";
         }
+
         if (armor->IsLightArmor()) {
             return "Armadura leve";
         }
 
         return "Armadura";
     }
-
+    
     std::string GetItemType(RE::TESForm* form)
     {
         if (form == nullptr) {
