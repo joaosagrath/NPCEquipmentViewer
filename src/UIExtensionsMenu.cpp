@@ -8,12 +8,16 @@ namespace
     constexpr std::int32_t kMenuError = -2;
     constexpr std::string_view kNativeScriptName = "NPCEquipmentViewerNative";
     constexpr std::string_view kMenuScriptName = "NPCEquipmentViewerMenu";
+    constexpr std::string_view kCustomMenuName = "CustomMenu";
+    constexpr float kListWidth = 384.0F;
+    constexpr float kStageWidth = 1280.0F;
 
     struct MenuSession
     {
         std::vector<std::string> entries;
         NPCEquipmentViewer::UIExtensionsMenu::SelectionCallback callback;
         bool active{ false };
+        bool resizePending{ false };
     };
 
     std::mutex g_sessionMutex;
@@ -45,6 +49,95 @@ namespace
         ResultHandler handler_;
     };
 
+    void ResizeCurrentListMenu()
+    {
+        auto* ui = RE::UI::GetSingleton();
+        if (ui == nullptr) {
+            return;
+        }
+
+        const auto menu = ui->GetMenu(kCustomMenuName.data());
+        if (!menu || !menu->uiMovie) {
+            return;
+        }
+
+        const RE::GFxValue widthValue{ kListWidth };
+        const RE::GFxValue positionValue{ (kStageWidth - kListWidth) / 2.0F };
+
+        menu->uiMovie->SetVariable(
+            "_root.listMenu.itemView.background._width",
+            widthValue);
+        menu->uiMovie->SetVariable(
+            "_root.listMenu.itemList.background._width",
+            widthValue);
+        menu->uiMovie->SetVariable(
+            "_root.listMenu.itemList.scrollbar._x",
+            widthValue);
+        menu->uiMovie->SetVariable(
+            "_root.listMenu._x",
+            positionValue);
+    }
+
+    class MenuResizeListener final : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
+    {
+    public:
+        static MenuResizeListener& GetSingleton()
+        {
+            static MenuResizeListener singleton;
+            return singleton;
+        }
+
+        void Register()
+        {
+            if (registered_) {
+                return;
+            }
+
+            auto* ui = RE::UI::GetSingleton();
+            if (ui == nullptr) {
+                return;
+            }
+
+            ui->AddEventSink<RE::MenuOpenCloseEvent>(this);
+            registered_ = true;
+        }
+
+        RE::BSEventNotifyControl ProcessEvent(
+            const RE::MenuOpenCloseEvent* event,
+            RE::BSTEventSource<RE::MenuOpenCloseEvent>*) override
+        {
+            if (event == nullptr ||
+                !event->opening ||
+                event->menuName != kCustomMenuName) {
+                return RE::BSEventNotifyControl::kContinue;
+            }
+
+            bool shouldResize = false;
+
+            {
+                std::scoped_lock lock(g_sessionMutex);
+
+                if (g_session.active && g_session.resizePending) {
+                    g_session.resizePending = false;
+                    shouldResize = true;
+                }
+            }
+
+            if (shouldResize) {
+                if (const auto* taskInterface = SKSE::GetTaskInterface(); taskInterface != nullptr) {
+                    taskInterface->AddTask([]() {
+                        ResizeCurrentListMenu();
+                    });
+                }
+            }
+
+            return RE::BSEventNotifyControl::kContinue;
+        }
+
+    private:
+        bool registered_{ false };
+    };
+
     RE::BSScript::IVirtualMachine* GetVirtualMachine()
     {
         auto* skyrimVM = RE::SkyrimVM::GetSingleton();
@@ -68,6 +161,7 @@ namespace
         g_session.entries.clear();
         g_session.callback = nullptr;
         g_session.active = false;
+        g_session.resizePending = false;
     }
 
     void CompleteSession(const std::int32_t selectedIndex)
@@ -84,6 +178,7 @@ namespace
             callback = std::move(g_session.callback);
             g_session.entries.clear();
             g_session.active = false;
+            g_session.resizePending = false;
         }
 
         if (callback) {
@@ -126,6 +221,11 @@ namespace NPCEquipmentViewer
         return dataHandler != nullptr &&
                dataHandler->LookupLoadedModByName("UIExtensions.esp") != nullptr &&
                GetVirtualMachine() != nullptr;
+    }
+
+    void UIExtensionsMenu::RegisterMenuEvents()
+    {
+        MenuResizeListener::GetSingleton().Register();
     }
 
     bool UIExtensionsMenu::RegisterPapyrusFunctions(
@@ -171,6 +271,7 @@ namespace NPCEquipmentViewer
             g_session.entries = entries;
             g_session.callback = std::move(callback);
             g_session.active = true;
+            g_session.resizePending = true;
         }
 
         auto vmCallback = MakeCallback([](RE::BSScript::Variable result) {
