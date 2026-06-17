@@ -1,14 +1,23 @@
 #include "PCH.h"
 #include "UIExtensionsMenu.h"
 
-#include <atomic>
-
 namespace
 {
-    using ScriptObject = RE::BSTSmartPointer<RE::BSScript::Object>;
     using ResultHandler = std::function<void(RE::BSScript::Variable)>;
 
     constexpr std::int32_t kMenuError = -2;
+    constexpr std::string_view kNativeScriptName = "NPCEquipmentViewerNative";
+    constexpr std::string_view kMenuScriptName = "NPCEquipmentViewerMenu";
+
+    struct MenuSession
+    {
+        std::vector<std::string> entries;
+        NPCEquipmentViewer::UIExtensionsMenu::SelectionCallback callback;
+        bool active{ false };
+    };
+
+    std::mutex g_sessionMutex;
+    MenuSession g_session;
 
     class VmCallback final : public RE::BSScript::IStackCallbackFunctor
     {
@@ -29,20 +38,11 @@ namespace
             return false;
         }
 
-        void SetObject(const ScriptObject&) override
+        void SetObject(const RE::BSTSmartPointer<RE::BSScript::Object>&) override
         {}
 
     private:
         ResultHandler handler_;
-    };
-
-    struct MenuRequest
-    {
-        ScriptObject menu;
-        std::vector<std::string> entries;
-        NPCEquipmentViewer::UIExtensionsMenu::SelectionCallback callback;
-        std::size_t nextEntry{ 0 };
-        std::atomic_bool completed{ false };
     };
 
     RE::BSScript::IVirtualMachine* GetVirtualMachine()
@@ -62,154 +62,59 @@ namespace
         return callback;
     }
 
-    void CompleteRequest(
-        const std::shared_ptr<MenuRequest>& request,
-        const std::int32_t selectedIndex)
+    void ClearSession()
     {
-        if (!request || request->completed.exchange(true)) {
-            return;
-        }
-
-        if (request->callback) {
-            request->callback(selectedIndex);
-        }
+        std::scoped_lock lock(g_sessionMutex);
+        g_session.entries.clear();
+        g_session.callback = nullptr;
+        g_session.active = false;
     }
 
-    bool QueueGameTask(
-        const std::shared_ptr<MenuRequest>& request,
-        std::function<void()> task)
+    void CompleteSession(const std::int32_t selectedIndex)
     {
-        if (!request || request->completed.load()) {
-            return false;
-        }
+        NPCEquipmentViewer::UIExtensionsMenu::SelectionCallback callback;
 
-        const auto* taskInterface = SKSE::GetTaskInterface();
-        if (taskInterface == nullptr) {
-            CompleteRequest(request, kMenuError);
-            return false;
-        }
+        {
+            std::scoped_lock lock(g_sessionMutex);
 
-        taskInterface->AddTask([
-            request,
-            task = std::move(task)]() mutable {
-            if (!request->completed.load() && task) {
-                task();
+            if (!g_session.active) {
+                return;
             }
-        });
 
-        return true;
-    }
-
-    bool DispatchMethod(
-        const ScriptObject& object,
-        const char* functionName,
-        RE::BSScript::IFunctionArguments* arguments,
-        ResultHandler handler)
-    {
-        auto* vm = GetVirtualMachine();
-        if (vm == nullptr || !object) {
-            delete arguments;
-            return false;
+            callback = std::move(g_session.callback);
+            g_session.entries.clear();
+            g_session.active = false;
         }
 
-        auto objectCopy = object;
-        auto callback = MakeCallback(std::move(handler));
-
-        if (!vm->DispatchMethodCall1(objectCopy, functionName, arguments, callback)) {
-            delete arguments;
-            return false;
-        }
-
-        return true;
-    }
-
-    void ReadSelectedIndex(const std::shared_ptr<MenuRequest>& request);
-    void OpenListMenu(const std::shared_ptr<MenuRequest>& request);
-    void AddNextEntry(const std::shared_ptr<MenuRequest>& request);
-
-    void ResetListMenu(const std::shared_ptr<MenuRequest>& request)
-    {
-        const bool dispatched = DispatchMethod(
-            request->menu,
-            "ResetMenu",
-            RE::MakeFunctionArguments(),
-            [request](RE::BSScript::Variable) {
-                QueueGameTask(request, [request]() {
-                    AddNextEntry(request);
-                });
-            });
-
-        if (!dispatched) {
-            CompleteRequest(request, kMenuError);
+        if (callback) {
+            callback(selectedIndex);
         }
     }
 
-    void ReadSelectedIndex(const std::shared_ptr<MenuRequest>& request)
+    std::int32_t GetEntryCount(RE::StaticFunctionTag*)
     {
-        const bool dispatched = DispatchMethod(
-            request->menu,
-            "GetResultInt",
-            RE::MakeFunctionArguments(),
-            [request](RE::BSScript::Variable result) {
-                if (!result.IsInt()) {
-                    CompleteRequest(request, kMenuError);
-                    return;
-                }
+        std::scoped_lock lock(g_sessionMutex);
 
-                CompleteRequest(request, result.GetSInt());
-            });
-
-        if (!dispatched) {
-            CompleteRequest(request, kMenuError);
+        if (!g_session.active) {
+            return 0;
         }
+
+        return static_cast<std::int32_t>(g_session.entries.size());
     }
 
-    void OpenListMenu(const std::shared_ptr<MenuRequest>& request)
+    RE::BSFixedString GetEntryText(
+        RE::StaticFunctionTag*,
+        const std::int32_t index)
     {
-        const bool dispatched = DispatchMethod(
-            request->menu,
-            "OpenMenu",
-            RE::MakeFunctionArguments(),
-            [request](RE::BSScript::Variable) {
-                QueueGameTask(request, [request]() {
-                    ReadSelectedIndex(request);
-                });
-            });
+        std::scoped_lock lock(g_sessionMutex);
 
-        if (!dispatched) {
-            CompleteRequest(request, kMenuError);
-        }
-    }
-
-    void AddNextEntry(const std::shared_ptr<MenuRequest>& request)
-    {
-        if (request->nextEntry >= request->entries.size()) {
-            OpenListMenu(request);
-            return;
+        if (!g_session.active ||
+            index < 0 ||
+            static_cast<std::size_t>(index) >= g_session.entries.size()) {
+            return {};
         }
 
-        const auto currentIndex = request->nextEntry;
-
-        const bool dispatched = DispatchMethod(
-            request->menu,
-            "AddEntryItem",
-            RE::MakeFunctionArguments(
-                std::string(request->entries[currentIndex])),
-            [request](RE::BSScript::Variable result) {
-                if (!result.IsInt()) {
-                    CompleteRequest(request, kMenuError);
-                    return;
-                }
-
-                ++request->nextEntry;
-                QueueGameTask(request, [request]() {
-                    AddNextEntry(request);
-                });
-            });
-
-        if (!dispatched) {
-            CompleteRequest(request, kMenuError);
-        }
+        return RE::BSFixedString(g_session.entries[static_cast<std::size_t>(index)]);
     }
 }
 
@@ -223,50 +128,66 @@ namespace NPCEquipmentViewer
                GetVirtualMachine() != nullptr;
     }
 
+    bool UIExtensionsMenu::RegisterPapyrusFunctions(
+        RE::BSScript::IVirtualMachine* virtualMachine)
+    {
+        if (virtualMachine == nullptr) {
+            return false;
+        }
+
+        virtualMachine->RegisterFunction(
+            "GetEntryCount",
+            kNativeScriptName.data(),
+            GetEntryCount);
+
+        virtualMachine->RegisterFunction(
+            "GetEntryText",
+            kNativeScriptName.data(),
+            GetEntryText);
+
+        return true;
+    }
+
     bool UIExtensionsMenu::Show(
         const std::vector<std::string>& entries,
         SelectionCallback callback)
     {
-        if (entries.empty() || !IsAvailable()) {
+        if (entries.empty() || !callback || !IsAvailable()) {
             return false;
         }
 
-        auto* vm = GetVirtualMachine();
-        if (vm == nullptr) {
+        auto* virtualMachine = GetVirtualMachine();
+        if (virtualMachine == nullptr) {
             return false;
         }
 
-        auto request = std::make_shared<MenuRequest>();
-        request->entries = entries;
-        request->callback = std::move(callback);
+        {
+            std::scoped_lock lock(g_sessionMutex);
 
-        auto vmCallback = MakeCallback([request](RE::BSScript::Variable result) {
-            if (!result.IsObject()) {
-                CompleteRequest(request, kMenuError);
+            if (g_session.active) {
+                return false;
+            }
+
+            g_session.entries = entries;
+            g_session.callback = std::move(callback);
+            g_session.active = true;
+        }
+
+        auto vmCallback = MakeCallback([](RE::BSScript::Variable result) {
+            if (!result.IsInt()) {
+                CompleteSession(kMenuError);
                 return;
             }
 
-            request->menu = result.GetObject();
-            if (!request->menu || !request->menu->IsValid()) {
-                CompleteRequest(request, kMenuError);
-                return;
-            }
-
-            QueueGameTask(request, [request]() {
-                ResetListMenu(request);
-            });
+            CompleteSession(result.GetSInt());
         });
 
-        auto* arguments = RE::MakeFunctionArguments(
-            std::string("UIListMenu"),
-            true);
-
-        if (!vm->DispatchStaticCall(
-                "UIExtensions",
-                "GetMenu",
-                arguments,
+        if (!virtualMachine->DispatchStaticCall(
+                kMenuScriptName.data(),
+                "ShowEquipmentMenu",
+                RE::MakeFunctionArguments(),
                 vmCallback)) {
-            delete arguments;
+            ClearSession();
             return false;
         }
 
