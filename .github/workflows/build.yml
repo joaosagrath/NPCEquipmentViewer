@@ -39,10 +39,10 @@ jobs:
 
       - name: Compactar pacote
         shell: pwsh
-        run: Compress-Archive -Path "build\release\package\*" -DestinationPath "NPCEquipmentViewer-1.0.0.zip"
+        run: Compress-Archive -Path "build\release\package\*" -DestinationPath "NPCEquipmentViewer-1.1.0.zip"
 
       - name: Publicar artefato
         uses: actions/upload-artifact@v4
         with:
-          name: NPCEquipmentViewer-1.0.0
-          path: NPCEquipmentViewer-1.0.0.zip
+          name: NPCEquipmentViewer-1.1.0
+          path: NPCEquipmentViewer-1.1.0.zip
