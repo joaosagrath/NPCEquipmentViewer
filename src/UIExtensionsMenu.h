@@ -9,6 +9,8 @@ namespace NPCEquipmentViewer
 
         [[nodiscard]] static bool IsAvailable();
 
+        static void RegisterMenuEvents();
+
         static bool RegisterPapyrusFunctions(
             RE::BSScript::IVirtualMachine* virtualMachine);
 
