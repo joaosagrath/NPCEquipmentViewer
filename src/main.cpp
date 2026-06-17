@@ -16,6 +16,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse)
 
     SKSE::GetMessagingInterface()->RegisterListener([](SKSE::MessagingInterface::Message* message) {
         if (message != nullptr && message->type == SKSE::MessagingInterface::kDataLoaded) {
+            NPCEquipmentViewer::UIExtensionsMenu::RegisterMenuEvents();
             NPCEquipmentViewer::EventHandler::Register();
         }
     });
