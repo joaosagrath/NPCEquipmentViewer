@@ -13,6 +13,10 @@
 
 #include <Windows.h>
 
+#ifdef GetObject
+#undef GetObject
+#endif
+
 #include <algorithm>
 #include <array>
 #include <cctype>

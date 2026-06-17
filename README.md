@@ -2,25 +2,28 @@
 
 Plugin SKSE para Skyrim Special Edition/Anniversary Edition.
 
-Ao colocar um NPC no crosshair e pressionar a tecla configurada, o mod abre uma janela nativa do Skyrim mostrando os itens equipados pelo NPC.
+Ao colocar um NPC no crosshair e pressionar a tecla configurada, o mod abre uma lista vertical com as armaduras, roupas, escudos e acessórios equipados pelo NPC. Ao confirmar um item, o mod adiciona automaticamente uma regra ao arquivo `Custom_modesty_KID.ini`.
 
 ## Recursos
 
 - alvo identificado pelo crosshair;
 - tecla configurável por arquivo INI;
-- mão direita e mão esquerda;
+- lista vertical navegável por teclado ou controle;
+- exibição simplificada com nome e slots do equipamento;
+- lista ampliada em 50% para facilitar a leitura;
 - roupas, armaduras, escudos e acessórios equipados;
 - slots de armadura entre 30 e 61;
-- FormID opcional;
-- sem ESP;
-- sem Papyrus;
-- sem SkyUI;
-- sem UIExtensions.
+- criação automática de `Custom_modesty_KID.ini`;
+- regras KID usando FormID local e plugin de origem;
+- comentário com nome e FormID antes de cada regra;
+- prevenção de entradas duplicadas;
+- sem ESP.
 
 ## Dependências para usar o mod compilado
 
 - Skyrim Script Extender, correspondente à versão do Skyrim;
-- Address Library for SKSE Plugins, correspondente à versão do Skyrim.
+- Address Library for SKSE Plugins, correspondente à versão do Skyrim;
+- UIExtensions, usado para exibir a lista vertical navegável.
 
 O projeto usa CommonLibSSE-NG, cuja proposta é gerar um único plugin para SE/AE/VR. O código desta versão foi pensado para Skyrim SE/AE; Skyrim VR não foi validado.
 
@@ -28,18 +31,49 @@ O projeto usa CommonLibSSE-NG, cuja proposta é gerar um único plugin para SE/A
 
 ```text
 Data/
+├── Scripts/
+│   ├── NPCEquipmentViewerMenu.pex
+│   └── NPCEquipmentViewerNative.pex
 └── SKSE/
     └── Plugins/
         ├── NPCEquipmentViewer.dll
         └── NPCEquipmentViewer.ini
 ```
 
+O arquivo gerado durante o uso fica em:
+
+```text
+Data/Custom_modesty_KID.ini
+```
+
 ## Uso
 
-1. Inicie o Skyrim pelo SKSE.
-2. Coloque um NPC no centro do crosshair.
-3. Pressione `K`.
-4. Feche a janela com `Enter`, `Esc` ou o botão exibido pelo jogo.
+1. Instale e ative o UIExtensions.
+2. Inicie o Skyrim pelo SKSE.
+3. Coloque um NPC no centro do crosshair.
+4. Pressione `H`.
+5. Navegue verticalmente pelos equipamentos usando o teclado ou controle.
+6. Pressione `Enter` ou o botão de confirmação do controle para adicionar o item ao KID.
+7. Reinicie o Skyrim para o Keyword Item Distributor processar a nova regra.
+
+Cada item é exibido neste formato:
+
+```text
+DXFII WildDreams All but Bra_Panty | S:32
+```
+
+## Formato gerado
+
+Exemplo:
+
+```ini
+; Steel Armor | ID:0x013955
+Keyword = NoModestyAll|Armor|0x013955~Skyrim.esm
+```
+
+O comentário facilita a identificação manual do item. A regra usa o FormID local e o plugin de origem, portanto não depende do idioma usado pelo jogo.
+
+Caso o arquivo ainda não exista, ele será criado automaticamente. Uma regra já existente não será adicionada novamente.
 
 ## Configuração
 
@@ -53,13 +87,15 @@ Configuração padrão:
 
 ```ini
 [General]
-KeyCode=0x25
-ShowFormID=true
+KeyCode=0x23
+ShowFormID=false
 ShowSlots=true
-ShowItemType=true
+ShowItemType=false
 ```
 
-`0x25` é o código DirectInput da tecla `K`. Consulte `KEYCODES_PT-BR.md` para outros códigos.
+`0x23` é o código DirectInput da tecla `H`. Consulte `KEYCODES_PT-BR.md` para outros códigos.
+
+A lista sempre exibe somente o nome do item e seus slots. As opções antigas de tipo e FormID foram mantidas no arquivo apenas por compatibilidade.
 
 O Skyrim deve ser reiniciado depois de alterar o INI.
 
@@ -126,7 +162,3 @@ SKYRIM_FOLDER=X:\SteamLibrary\steamapps\common\Skyrim Special Edition
 ```
 
 Nesse caso, os arquivos serão copiados diretamente para a pasta `Data` do jogo.
-
-## Limitação visual desta versão
-
-A lista é exibida por uma caixa de diálogo nativa do Skyrim. Ela é somente leitura. Uma versão posterior pode trocar essa janela por um menu Scaleform próprio, com rolagem, ícones e seleção de itens.

@@ -1,5 +1,11 @@
 # Códigos de teclas DirectInput
 
+A tecla padrão do mod é `H`:
+
+```ini
+KeyCode=0x23
+```
+
 Altere `KeyCode` no arquivo:
 
 `SKSE/Plugins/NPCEquipmentViewer.ini`

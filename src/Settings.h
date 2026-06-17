@@ -17,9 +17,9 @@ namespace NPCEquipmentViewer
     private:
         Settings() = default;
 
-        std::uint32_t keyCode_{ 0x25 };  // DIK_K
-        bool showFormID_{ true };
+        std::uint32_t keyCode_{ 0x23 };  // DIK_H
+        bool showFormID_{ false };
         bool showSlots_{ true };
-        bool showItemType_{ true };
+        bool showItemType_{ false };
     };
 }
