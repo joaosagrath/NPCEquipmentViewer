@@ -141,15 +141,14 @@ namespace
         }
 
         const auto currentIndex = request->nextEntry;
-        const auto callbackValue = static_cast<std::int32_t>(currentIndex);
 
         const bool dispatched = DispatchMethod(
             request->menu,
             "AddEntryItem",
             RE::MakeFunctionArguments(
-                request->entries[currentIndex],
-                static_cast<std::int32_t>(-1),
-                callbackValue,
+                std::string(request->entries[currentIndex]),
+                std::int32_t{ -1 },
+                static_cast<std::int32_t>(currentIndex),
                 false),
             [request](RE::BSScript::Variable) {
                 ++request->nextEntry;
