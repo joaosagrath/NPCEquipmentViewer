@@ -33,9 +33,60 @@ jobs:
         shell: pwsh
         run: cmake --preset release
 
-      - name: Compilar
+      - name: Compilar DLL
         shell: pwsh
         run: cmake --build --preset release
+
+      - name: Preparar compilador Papyrus
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          gh release download 0.3.0a `
+            -R KrisV-777/Caprica `
+            --pattern "Caprica.zip" `
+            --dir "$env:RUNNER_TEMP" `
+            --clobber
+
+          New-Item -ItemType Directory -Path "$env:RUNNER_TEMP\Caprica" -Force | Out-Null
+          7z x "$env:RUNNER_TEMP\Caprica.zip" "-o$env:RUNNER_TEMP\Caprica" -y
+
+          git clone --depth 1 `
+            https://github.com/IHateMyKite/PAPYRUS.git `
+            "$env:RUNNER_TEMP\Papyrus"
+
+          Invoke-WebRequest `
+            -Uri "https://raw.githubusercontent.com/Rukan/Grimy-Skyrim-Papyrus-Source/master/TESV_Papyrus_Flags.flg" `
+            -OutFile "$env:RUNNER_TEMP\TESV_Papyrus_Flags.flg"
+
+      - name: Compilar scripts Papyrus
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          New-Item -ItemType Directory -Path "build\release\package\Scripts" -Force | Out-Null
+
+          & "$env:RUNNER_TEMP\Caprica\Caprica.exe" `
+            --game skyrim `
+            --import "$env:RUNNER_TEMP\Papyrus\SRC;$env:RUNNER_TEMP\Papyrus\SRC_UIEXT;dist\Source\Scripts;" `
+            --output "build\release\package\Scripts" `
+            --flags="$env:RUNNER_TEMP\TESV_Papyrus_Flags.flg" `
+            "$env:GITHUB_WORKSPACE\dist\Source\Scripts" `
+            -R `
+            -q
+
+          $requiredScripts = @(
+            "build\release\package\Scripts\NPCEquipmentViewerNative.pex",
+            "build\release\package\Scripts\NPCEquipmentViewerMenu.pex"
+          )
+
+          foreach ($script in $requiredScripts) {
+            if (-not (Test-Path $script)) {
+              throw "Script Papyrus não foi gerado: $script"
+            }
+          }
 
       - name: Compactar pacote
         shell: pwsh
