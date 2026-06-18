@@ -4,6 +4,7 @@
 namespace
 {
     constexpr std::string_view kOutputFileName = "Custom_modesty_KID.ini";
+    constexpr std::string_view kEntrySeparator = ";--------------";
     std::mutex g_fileMutex;
 
     std::string Trim(std::string value)
@@ -164,6 +165,7 @@ namespace
         const std::string& ruleLine)
     {
         std::ostringstream output;
+        output << kEntrySeparator << '\n';
         output << BuildCommentLine(armor, displayName) << '\n';
         output << BuildKeywordCommentLine(keyword, keywordDescription) << '\n';
         output << ruleLine;
@@ -242,6 +244,7 @@ namespace
         const std::string& ruleLine)
     {
         return {
+            std::string(kEntrySeparator),
             BuildCommentLine(armor, displayName),
             BuildKeywordCommentLine(keyword, keywordDescription),
             ruleLine
