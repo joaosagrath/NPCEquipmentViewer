@@ -1,7 +1,8 @@
 #include "PCH.h"
 #include "EquipmentMenu.h"
+#include "EquipmentSelectionMenu.h"
 #include "KidWriter.h"
-#include "UIExtensionsMenu.h"
+#include "Settings.h"
 
 namespace
 {
@@ -62,20 +63,41 @@ namespace
         SlotDescription{ BipedSlot::kFX01, 61 }
     };
 
-    std::string GetFormName(RE::TESForm* form, RE::InventoryEntryData* entryData = nullptr)
+    std::string FormatFormID(const RE::TESForm* form)
+    {
+        if (form == nullptr) {
+            return {};
+        }
+
+        std::ostringstream output;
+        output << "0x"
+               << std::uppercase
+               << std::hex
+               << std::setw(8)
+               << std::setfill('0')
+               << form->GetFormID();
+        return output.str();
+    }
+
+    std::string GetFormName(
+        RE::TESForm* form,
+        RE::InventoryEntryData* entryData = nullptr)
     {
         if (entryData != nullptr) {
-            if (const auto* displayName = entryData->GetDisplayName(); displayName != nullptr && displayName[0] != '\0') {
+            if (const auto* displayName = entryData->GetDisplayName();
+                displayName != nullptr && displayName[0] != '\0') {
                 return displayName;
             }
         }
 
         if (form != nullptr) {
-            if (const auto* name = form->GetName(); name != nullptr && name[0] != '\0') {
+            if (const auto* name = form->GetName();
+                name != nullptr && name[0] != '\0') {
                 return name;
             }
 
-            if (const auto* editorID = form->GetFormEditorID(); editorID != nullptr && editorID[0] != '\0') {
+            if (const auto* editorID = form->GetFormEditorID();
+                editorID != nullptr && editorID[0] != '\0') {
                 return editorID;
             }
         }
@@ -89,11 +111,13 @@ namespace
             return "NPC";
         }
 
-        if (const auto* displayName = actor->GetDisplayFullName(); displayName != nullptr && displayName[0] != '\0') {
+        if (const auto* displayName = actor->GetDisplayFullName();
+            displayName != nullptr && displayName[0] != '\0') {
             return displayName;
         }
 
-        if (const auto* name = actor->GetName(); name != nullptr && name[0] != '\0') {
+        if (const auto* name = actor->GetName();
+            name != nullptr && name[0] != '\0') {
             return name;
         }
 
@@ -118,10 +142,12 @@ namespace
         if (armor->HasPartOf(BipedSlot::kBody)) {
             return armor->IsClothing() ? "Clothing" : "Body armor";
         }
-        if (armor->HasPartOf(BipedSlot::kHands) || armor->HasPartOf(BipedSlot::kForearms)) {
+        if (armor->HasPartOf(BipedSlot::kHands) ||
+            armor->HasPartOf(BipedSlot::kForearms)) {
             return "Hands";
         }
-        if (armor->HasPartOf(BipedSlot::kFeet) || armor->HasPartOf(BipedSlot::kCalves)) {
+        if (armor->HasPartOf(BipedSlot::kFeet) ||
+            armor->HasPartOf(BipedSlot::kCalves)) {
             return "Feet";
         }
         if (armor->HasPartOf(BipedSlot::kAmulet) ||
@@ -175,14 +201,18 @@ namespace
         RE::TESForm* form,
         RE::InventoryEntryData* entryData)
     {
-        auto* armor = form != nullptr ? form->As<RE::TESObjectARMO>() : nullptr;
+        auto* armor =
+            form != nullptr ? form->As<RE::TESObjectARMO>() : nullptr;
         if (armor == nullptr) {
             return;
         }
 
-        const auto duplicate = std::find_if(items.begin(), items.end(), [armor](const EquipmentItem& item) {
-            return item.armor == armor;
-        });
+        const auto duplicate = std::find_if(
+            items.begin(),
+            items.end(),
+            [armor](const EquipmentItem& item) {
+                return item.armor == armor;
+            });
 
         if (duplicate != items.end()) {
             return;
@@ -198,54 +228,70 @@ namespace
 
     std::string BuildListLabel(const EquipmentItem& item)
     {
+        const auto& settings =
+            NPCEquipmentViewer::Settings::GetSingleton();
+
         std::ostringstream output;
         output << item.displayName;
 
-        if (!item.slots.empty()) {
-            output << " | S:" << item.slots;
+        if (settings.ShowItemType()) {
+            output << " [" << item.type << ']';
+        }
+
+        if (settings.ShowSlots() && !item.slots.empty()) {
+            output << " | Slot:" << item.slots;
+        }
+
+        if (settings.ShowFormID()) {
+            output << " | " << FormatFormID(item.armor);
         }
 
         return output.str();
     }
 
-    void NotifyWriteResult(const NPCEquipmentViewer::KidWriter::WriteResult& result)
+    void NotifyWriteResult(
+        const NPCEquipmentViewer::KidWriter::WriteResult& result)
     {
         using Result = NPCEquipmentViewer::KidWriter::Result;
 
         switch (result.result) {
         case Result::kAdded:
-            RE::DebugNotification("Item added to Custom_modesty_KID.ini. Restart Skyrim to apply it.");
+            RE::DebugNotification(
+                "Item added to Custom_modesty_KID.ini. "
+                "Restart Skyrim to apply it.");
             break;
+
         case Result::kDuplicate:
-            RE::DebugNotification("This item is already present in Custom_modesty_KID.ini.");
+            RE::DebugNotification(
+                "This item is already present in "
+                "Custom_modesty_KID.ini.");
             break;
+
         case Result::kInvalidArmor:
-            RE::DebugNotification("The selected item cannot be written as an Armor rule.");
+            RE::DebugNotification(
+                "The selected item cannot be written as an Armor rule.");
             break;
+
         case Result::kFileError:
         default:
-            RE::DebugNotification("Could not write Custom_modesty_KID.ini.");
+            RE::DebugNotification(
+                "Could not write Custom_modesty_KID.ini.");
             break;
         }
     }
 
     void QueueGameTask(std::function<void()> task)
     {
-        if (const auto* taskInterface = SKSE::GetTaskInterface(); taskInterface != nullptr) {
+        if (const auto* taskInterface = SKSE::GetTaskInterface();
+            taskInterface != nullptr) {
             taskInterface->AddTask(std::move(task));
         }
     }
 
-    void ShowVerticalMenu(const std::shared_ptr<MenuState>& state)
+    void ShowEquipmentSelectionMenu(
+        const std::shared_ptr<MenuState>& state)
     {
         if (!state || state->items.empty()) {
-            return;
-        }
-
-        if (!NPCEquipmentViewer::UIExtensionsMenu::IsAvailable()) {
-            RE::DebugMessageBox(
-                "UIExtensions is required to display the equipment list vertically. "
-                "Install and enable UIExtensions, then restart Skyrim.");
             return;
         }
 
@@ -256,51 +302,50 @@ namespace
             entries.push_back(BuildListLabel(item));
         }
 
-        const auto notification = "Equipment worn by " + state->actorName;
-        RE::DebugNotification(notification.c_str());
+        const auto title =
+            "Equipment worn by " + state->actorName;
 
-        const bool opened = NPCEquipmentViewer::UIExtensionsMenu::Show(
-            entries,
-            [state](const std::int32_t selectedIndex) {
-                if (selectedIndex == -2) {
-                    QueueGameTask([]() {
-                        RE::DebugNotification("Could not open the UIExtensions equipment list.");
+        const bool opened =
+            NPCEquipmentViewer::EquipmentSelectionMenu::Show(
+                title,
+                std::move(entries),
+                [state](const std::size_t selectedIndex) {
+                    if (selectedIndex >= state->items.size()) {
+                        return;
+                    }
+
+                    QueueGameTask([state, selectedIndex]() {
+                        const auto& item = state->items[selectedIndex];
+                        const auto result =
+                            NPCEquipmentViewer::KidWriter::AddArmor(
+                                item.armor,
+                                item.displayName);
+                        NotifyWriteResult(result);
                     });
-                    return;
-                }
-
-                if (selectedIndex < 0 ||
-                    static_cast<std::size_t>(selectedIndex) >= state->items.size()) {
-                    return;
-                }
-
-                QueueGameTask([state, selectedIndex]() {
-                    const auto& item = state->items[static_cast<std::size_t>(selectedIndex)];
-                    const auto result = NPCEquipmentViewer::KidWriter::AddArmor(
-                        item.armor,
-                        item.displayName);
-                    NotifyWriteResult(result);
                 });
-            });
 
         if (!opened) {
-            RE::DebugNotification("Could not initialize the UIExtensions equipment list.");
+            RE::DebugNotification(
+                "Could not open the equipment selection menu.");
         }
     }
 }
 
 namespace NPCEquipmentViewer
 {
-    void EquipmentMenu::Show(const RE::NiPointer<RE::TESObjectREFR>& target)
+    void EquipmentMenu::Show(
+        const RE::NiPointer<RE::TESObjectREFR>& target)
     {
         if (!target) {
-            RE::DebugNotification("No target under the crosshair.");
+            RE::DebugNotification(
+                "No target under the crosshair.");
             return;
         }
 
         auto* actor = target->As<RE::Actor>();
         if (actor == nullptr) {
-            RE::DebugNotification("The crosshair target is not an NPC.");
+            RE::DebugNotification(
+                "The crosshair target is not an NPC.");
             return;
         }
 
@@ -321,25 +366,36 @@ namespace NPCEquipmentViewer
         for (auto& [object, inventoryData] : inventory) {
             auto& [count, entryData] = inventoryData;
 
-            if (object == nullptr || entryData == nullptr || count <= 0 || !entryData->IsWorn()) {
+            if (object == nullptr ||
+                entryData == nullptr ||
+                count <= 0 ||
+                !entryData->IsWorn()) {
                 continue;
             }
 
-            AddArmorItem(state->items, object, entryData.get());
+            AddArmorItem(
+                state->items,
+                object,
+                entryData.get());
         }
 
-        std::sort(state->items.begin(), state->items.end(), [](const EquipmentItem& left, const EquipmentItem& right) {
-            if (left.type != right.type) {
-                return left.type < right.type;
-            }
-            return left.displayName < right.displayName;
-        });
+        std::sort(
+            state->items.begin(),
+            state->items.end(),
+            [](const EquipmentItem& left, const EquipmentItem& right) {
+                if (left.type != right.type) {
+                    return left.type < right.type;
+                }
+
+                return left.displayName < right.displayName;
+            });
 
         if (state->items.empty()) {
-            RE::DebugNotification("No equipped armor or clothing was detected.");
+            RE::DebugNotification(
+                "No equipped armor or clothing was detected.");
             return;
         }
 
-        ShowVerticalMenu(state);
+        ShowEquipmentSelectionMenu(state);
     }
 }

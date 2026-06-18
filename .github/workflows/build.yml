@@ -7,9 +7,60 @@ on:
       - main
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  build-interface:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+
+      - name: Instalar compilador SWF
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y swfmill
+          git clone --depth 1 \
+            https://github.com/SkyDwemerForge/ERF-ICON-Widget.git \
+            "$RUNNER_TEMP/erf-icon-widget"
+          chmod +x "$RUNNER_TEMP/erf-icon-widget/tools/mtasc/mtasc"
+
+      - name: Compilar menu Scaleform
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p interface/build
+
+          swfmill simple \
+            interface/NPCEquipmentViewerMenu.xml \
+            interface/build/NPCEquipmentViewerMenu.pre.swf
+
+          "$RUNNER_TEMP/erf-icon-widget/tools/mtasc/mtasc" \
+            -version 8 \
+            -swf interface/build/NPCEquipmentViewerMenu.pre.swf \
+            -cp interface/as2 \
+            -main NPCEquipmentViewerMenu \
+            -frame 1 \
+            -keep \
+            -out interface/build/NPCEquipmentViewerMenu.swf
+
+          test -s interface/build/NPCEquipmentViewerMenu.swf
+
+      - name: Publicar menu Scaleform intermediário
+        uses: actions/upload-artifact@v4
+        with:
+          name: NPCEquipmentViewer-interface
+          path: interface/build/NPCEquipmentViewerMenu.swf
+          if-no-files-found: error
+
   build:
     runs-on: windows-2022
+    needs: build-interface
 
     steps:
       - name: Baixar o repositório
@@ -37,63 +88,34 @@ jobs:
         shell: pwsh
         run: cmake --build --preset release
 
-      - name: Preparar compilador Papyrus
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $ErrorActionPreference = "Stop"
+      - name: Baixar menu Scaleform
+        uses: actions/download-artifact@v4
+        with:
+          name: NPCEquipmentViewer-interface
+          path: build/release/package/Interface
 
-          gh release download 0.3.0a `
-            -R KrisV-777/Caprica `
-            --pattern "Caprica.zip" `
-            --dir "$env:RUNNER_TEMP" `
-            --clobber
-
-          New-Item -ItemType Directory -Path "$env:RUNNER_TEMP\Caprica" -Force | Out-Null
-          7z x "$env:RUNNER_TEMP\Caprica.zip" "-o$env:RUNNER_TEMP\Caprica" -y
-
-          git clone --depth 1 `
-            https://github.com/IHateMyKite/PAPYRUS.git `
-            "$env:RUNNER_TEMP\Papyrus"
-
-          Invoke-WebRequest `
-            -Uri "https://raw.githubusercontent.com/Rukan/Grimy-Skyrim-Papyrus-Source/master/TESV_Papyrus_Flags.flg" `
-            -OutFile "$env:RUNNER_TEMP\TESV_Papyrus_Flags.flg"
-
-      - name: Compilar scripts Papyrus
+      - name: Validar pacote
         shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-
-          New-Item -ItemType Directory -Path "build\release\package\Scripts" -Force | Out-Null
-
-          & "$env:RUNNER_TEMP\Caprica\Caprica.exe" `
-            --game skyrim `
-            --import "$env:RUNNER_TEMP\Papyrus\SRC;$env:RUNNER_TEMP\Papyrus\SRC_UIEXT;dist\Source\Scripts;" `
-            --output "build\release\package\Scripts" `
-            --flags="$env:RUNNER_TEMP\TESV_Papyrus_Flags.flg" `
-            "$env:GITHUB_WORKSPACE\dist\Source\Scripts" `
-            -R `
-            -q
-
-          $requiredScripts = @(
-            "build\release\package\Scripts\NPCEquipmentViewerNative.pex",
-            "build\release\package\Scripts\NPCEquipmentViewerMenu.pex"
+          $requiredFiles = @(
+            "build\release\package\Interface\NPCEquipmentViewerMenu.swf",
+            "build\release\package\SKSE\Plugins\NPCEquipmentViewer.dll",
+            "build\release\package\SKSE\Plugins\NPCEquipmentViewer.ini"
           )
 
-          foreach ($script in $requiredScripts) {
-            if (-not (Test-Path $script)) {
-              throw "Script Papyrus não foi gerado: $script"
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path $file)) {
+              throw "Arquivo obrigatório não foi gerado: $file"
             }
           }
 
       - name: Compactar pacote
         shell: pwsh
-        run: Compress-Archive -Path "build\release\package\*" -DestinationPath "NPCEquipmentViewer-1.2.0.zip"
+        run: Compress-Archive -Path "build\release\package\*" -DestinationPath "NPCEquipmentViewer-2.0.3.zip"
 
       - name: Publicar artefato
         uses: actions/upload-artifact@v4
         with:
-          name: NPCEquipmentViewer-1.2.0
-          path: NPCEquipmentViewer-1.2.0.zip
+          name: NPCEquipmentViewer-2.0.3
+          path: NPCEquipmentViewer-2.0.3.zip
+          if-no-files-found: error
