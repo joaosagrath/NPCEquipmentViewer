@@ -37,12 +37,6 @@ class NPCEquipmentViewerMenu
     private static var ROW_START_Y:Number = 183;
     private static var ROW_HEIGHT:Number = 36;
     private static var FOOTER_Y:Number = 567;
-    private static var NORMAL_ROW_TEXT_SIZE:Number = 24;
-    private static var SELECTED_ROW_TEXT_SIZE:Number = 26;
-    private static var MINIMUM_ROW_TEXT_SIZE:Number = 15;
-    private static var NORMAL_ROW_TEXT_COLOR:Number = 0xFFFFFF;
-    private static var SELECTED_ROW_TEXT_COLOR:Number = 0xFFCC00;
-    private static var SELECTED_ROW_MARKER:String = "> ";
 
     function NPCEquipmentViewerMenu(rootClip:MovieClip)
     {
@@ -213,10 +207,10 @@ class NPCEquipmentViewerMenu
 
         SetFittedText(
             field,
-            selected ? SELECTED_ROW_MARKER + rowText : rowText,
-            selected ? SELECTED_ROW_TEXT_SIZE : NORMAL_ROW_TEXT_SIZE,
-            MINIMUM_ROW_TEXT_SIZE,
-            selected ? SELECTED_ROW_TEXT_COLOR : NORMAL_ROW_TEXT_COLOR);
+            selected ? "> " + rowText : rowText,
+            selected ? 26 : 24,
+            15,
+            selected ? 0xFFCC00 : 0xFFFFFF);
 
         return 1;
     }
