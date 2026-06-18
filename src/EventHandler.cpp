@@ -1,6 +1,7 @@
 #include "PCH.h"
 #include "EventHandler.h"
 #include "EquipmentMenu.h"
+#include "EquipmentSelectionMenu.h"
 #include "Settings.h"
 
 namespace NPCEquipmentViewer
@@ -43,7 +44,14 @@ namespace NPCEquipmentViewer
 
         const auto& settings = Settings::GetSingleton();
 
-        for (auto* currentEvent = *event; currentEvent != nullptr; currentEvent = currentEvent->next) {
+        for (auto* currentEvent = *event;
+             currentEvent != nullptr;
+             currentEvent = currentEvent->next) {
+            if (EquipmentSelectionMenu::IsOpen()) {
+                EquipmentSelectionMenu::HandleNavigationInput(currentEvent);
+                continue;
+            }
+
             if (currentEvent->GetEventType() != RE::INPUT_EVENT_TYPE::kButton) {
                 continue;
             }
@@ -66,8 +74,16 @@ namespace NPCEquipmentViewer
             }
 
             auto target = GetCrosshairTarget();
+            if (!target) {
+                if (auto* player = RE::PlayerCharacter::GetSingleton(); player != nullptr) {
+                    target.reset(player);
+                    SKSE::log::info(
+                        "[MenuDiagnostic] No crosshair target; using player equipment");
+                }
+            }
 
-            if (const auto* taskInterface = SKSE::GetTaskInterface(); taskInterface != nullptr) {
+            if (const auto* taskInterface = SKSE::GetTaskInterface();
+                taskInterface != nullptr) {
                 taskInterface->AddTask([target = std::move(target)]() {
                     EquipmentMenu::Show(target);
                 });
