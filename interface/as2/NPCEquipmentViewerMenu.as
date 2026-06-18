@@ -207,7 +207,7 @@ class NPCEquipmentViewerMenu
 
         SetFittedText(
             field,
-            selected ? "> " + rowText : rowText,
+            rowText,
             selected ? 26 : 24,
             15,
             selected ? 0xFFCC00 : 0xFFFFFF);

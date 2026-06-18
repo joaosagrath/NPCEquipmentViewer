@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(NPCEquipmentViewer VERSION 2.0.4 LANGUAGES CXX)
+project(NPCEquipmentViewer VERSION 2.0.5 LANGUAGES CXX)
 
 if(DEFINED ENV{SKYRIM_FOLDER} AND IS_DIRECTORY "$ENV{SKYRIM_FOLDER}/Data")
     set(OUTPUT_FOLDER "$ENV{SKYRIM_FOLDER}/Data")
