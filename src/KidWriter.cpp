@@ -4,7 +4,6 @@
 namespace
 {
     constexpr std::string_view kOutputFileName = "Custom_modesty_KID.ini";
-    constexpr std::string_view kKeywordName = "NoModestyAll";
     std::mutex g_fileMutex;
 
     std::string Trim(std::string value)
@@ -142,27 +141,111 @@ namespace
                " | ID:" + FormatLocalFormID(armor);
     }
 
-    std::string BuildRuleLine(const std::string& filter)
+    std::string BuildKeywordCommentLine(
+        const std::string_view keyword,
+        const std::string_view keywordDescription)
     {
-        return "Keyword = " + std::string(kKeywordName) + "|Armor|" + filter;
+        return "; " + std::string(keyword) + ": " +
+               std::string(keywordDescription);
     }
 
-    bool ContainsLine(const std::string& content, const std::vector<std::string>& candidates)
+    std::string BuildRuleLine(
+        const std::string_view keyword,
+        const std::string& filter)
     {
+        return "Keyword = " + std::string(keyword) + "|Armor|" + filter;
+    }
+
+    std::string BuildEntryBlock(
+        RE::TESObjectARMO* armor,
+        const std::string& displayName,
+        const std::string_view keyword,
+        const std::string_view keywordDescription,
+        const std::string& ruleLine)
+    {
+        std::ostringstream output;
+        output << BuildCommentLine(armor, displayName) << '\n';
+        output << BuildKeywordCommentLine(keyword, keywordDescription) << '\n';
+        output << ruleLine;
+        return output.str();
+    }
+
+    bool IsCommentLine(const std::string& line)
+    {
+        return Normalize(line).starts_with(';');
+    }
+
+    std::vector<std::string> SplitLines(const std::string& content)
+    {
+        std::vector<std::string> lines;
         std::istringstream input(content);
-        std::string existingLine;
+        std::string line;
 
-        while (std::getline(input, existingLine)) {
-            const auto normalizedExisting = Normalize(existingLine);
+        while (std::getline(input, line)) {
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
 
-            for (const auto& candidate : candidates) {
-                if (normalizedExisting == Normalize(candidate)) {
-                    return true;
-                }
+            lines.push_back(std::move(line));
+        }
+
+        return lines;
+    }
+
+    std::string JoinLines(const std::vector<std::string>& lines)
+    {
+        std::ostringstream output;
+
+        for (std::size_t index = 0; index < lines.size(); ++index) {
+            if (index > 0) {
+                output << '\n';
+            }
+
+            output << lines[index];
+        }
+
+        if (!lines.empty()) {
+            output << '\n';
+        }
+
+        return output.str();
+    }
+
+    bool IsArmorRuleForFilter(
+        const std::string& line,
+        const std::vector<std::string>& filters)
+    {
+        const auto normalizedLine = Normalize(line);
+        if (!normalizedLine.starts_with("keyword = ")) {
+            return false;
+        }
+
+        for (const auto& filter : filters) {
+            if (filter.empty()) {
+                continue;
+            }
+
+            const auto normalizedNeedle = "|armor|" + Normalize(filter);
+            if (normalizedLine.ends_with(normalizedNeedle)) {
+                return true;
             }
         }
 
         return false;
+    }
+
+    std::vector<std::string> BuildEntryLines(
+        RE::TESObjectARMO* armor,
+        const std::string& displayName,
+        const std::string_view keyword,
+        const std::string_view keywordDescription,
+        const std::string& ruleLine)
+    {
+        return {
+            BuildCommentLine(armor, displayName),
+            BuildKeywordCommentLine(keyword, keywordDescription),
+            ruleLine
+        };
     }
 }
 
@@ -170,12 +253,14 @@ namespace NPCEquipmentViewer
 {
     KidWriter::WriteResult KidWriter::AddArmor(
         RE::TESObjectARMO* armor,
-        const std::string& displayName)
+        const std::string& displayName,
+        const std::string_view keyword,
+        const std::string_view keywordDescription)
     {
         WriteResult result;
         result.path = GetOutputPath();
 
-        if (armor == nullptr) {
+        if (armor == nullptr || keyword.empty() || keywordDescription.empty()) {
             result.result = Result::kInvalidArmor;
             return result;
         }
@@ -189,11 +274,14 @@ namespace NPCEquipmentViewer
             return result;
         }
 
-        result.line = BuildRuleLine(selectedFilter);
-        std::vector<std::string> duplicateCandidates{ result.line };
+        result.line = BuildRuleLine(keyword, selectedFilter);
+        std::vector<std::string> itemFilters{ selectedFilter };
 
-        if (!fallbackFilter.empty()) {
-            duplicateCandidates.push_back(BuildRuleLine(fallbackFilter));
+        if (!exactFilter.empty() && exactFilter != selectedFilter) {
+            itemFilters.push_back(exactFilter);
+        }
+        if (!fallbackFilter.empty() && fallbackFilter != selectedFilter) {
+            itemFilters.push_back(fallbackFilter);
         }
 
         std::scoped_lock lock(g_fileMutex);
@@ -210,8 +298,53 @@ namespace NPCEquipmentViewer
                 std::istreambuf_iterator<char>(input),
                 std::istreambuf_iterator<char>());
 
-            if (ContainsLine(existingContent, duplicateCandidates)) {
-                result.result = Result::kDuplicate;
+            auto lines = SplitLines(existingContent);
+            for (std::size_t index = 0; index < lines.size(); ++index) {
+                if (!IsArmorRuleForFilter(lines[index], itemFilters)) {
+                    continue;
+                }
+
+                const auto replacement = BuildEntryLines(
+                    armor,
+                    displayName,
+                    keyword,
+                    keywordDescription,
+                    result.line);
+
+                if (Normalize(lines[index]) == Normalize(result.line)) {
+                    if (index >= replacement.size() - 1 &&
+                        Normalize(lines[index - 1]) ==
+                            Normalize(replacement[replacement.size() - 2])) {
+                        result.result = Result::kDuplicate;
+                        return result;
+                    }
+                }
+
+                auto eraseBegin = index;
+                while (eraseBegin > 0 && IsCommentLine(lines[eraseBegin - 1])) {
+                    --eraseBegin;
+                }
+
+                lines.erase(lines.begin() + static_cast<std::ptrdiff_t>(eraseBegin),
+                    lines.begin() + static_cast<std::ptrdiff_t>(index + 1));
+                lines.insert(lines.begin() + static_cast<std::ptrdiff_t>(eraseBegin),
+                    replacement.begin(),
+                    replacement.end());
+
+                std::ofstream replacementOutput(
+                    result.path,
+                    std::ios::binary | std::ios::trunc);
+                if (!replacementOutput.is_open()) {
+                    result.result = Result::kFileError;
+                    return result;
+                }
+
+                replacementOutput << JoinLines(lines);
+                replacementOutput.flush();
+
+                result.result = replacementOutput.good()
+                    ? Result::kUpdated
+                    : Result::kFileError;
                 return result;
             }
         }
@@ -226,8 +359,12 @@ namespace NPCEquipmentViewer
             output << '\n';
         }
 
-        output << BuildCommentLine(armor, displayName) << '\n';
-        output << result.line << '\n';
+        output << BuildEntryBlock(
+            armor,
+            displayName,
+            keyword,
+            keywordDescription,
+            result.line) << '\n';
         output.flush();
 
         result.result = output.good() ? Result::kAdded : Result::kFileError;

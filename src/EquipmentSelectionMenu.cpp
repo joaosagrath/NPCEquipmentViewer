@@ -22,6 +22,7 @@ namespace
     std::mutex g_requestMutex;
     std::optional<MenuRequest> g_pendingRequest;
     ScaleformEquipmentMenu* g_activeMenu{ nullptr };
+    std::atomic_bool g_closePending{ false };
 
     class ScaleformEquipmentMenu final : public RE::IMenu
     {
@@ -87,8 +88,24 @@ namespace
                 if (g_activeMenu == this) {
                     g_activeMenu = nullptr;
                 }
+                g_closePending = false;
                 request_.reset();
                 ResetThumbstickState();
+                {
+                    std::scoped_lock lock(g_requestMutex);
+                    if (g_pendingRequest.has_value()) {
+                        SKSE::log::info(
+                            "[MenuDiagnostic] Pending chained menu request detected after hide");
+                        if (auto* messageQueue =
+                                RE::UIMessageQueue::GetSingleton();
+                            messageQueue != nullptr) {
+                            messageQueue->AddMessage(
+                                kMenuName.data(),
+                                RE::UI_MESSAGE_TYPE::kShow,
+                                nullptr);
+                        }
+                    }
+                }
                 break;
 
             case RE::UI_MESSAGE_TYPE::kUserEvent:
@@ -605,6 +622,7 @@ namespace
         {
             if (auto* messageQueue = RE::UIMessageQueue::GetSingleton();
                 messageQueue != nullptr) {
+                g_closePending = true;
                 messageQueue->AddMessage(
                     kMenuName.data(),
                     RE::UI_MESSAGE_TYPE::kHide,
@@ -672,13 +690,6 @@ namespace NPCEquipmentViewer
             return false;
         }
 
-        if (ui->IsMenuOpen(kMenuName)) {
-            SKSE::log::warn(
-                "[MenuDiagnostic] Show rejected: {} is already open",
-                kMenuName);
-            return false;
-        }
-
         {
             std::scoped_lock lock(g_requestMutex);
 
@@ -698,6 +709,20 @@ namespace NPCEquipmentViewer
                 std::move(entries),
                 std::move(callback)
             };
+        }
+
+        if (ui->IsMenuOpen(kMenuName)) {
+            SKSE::log::info(
+                "[MenuDiagnostic] {} is open; queueing current menu hide before showing the next request",
+                kMenuName);
+            if (!g_closePending) {
+                g_closePending = true;
+                messageQueue->AddMessage(
+                    kMenuName.data(),
+                    RE::UI_MESSAGE_TYPE::kHide,
+                    nullptr);
+            }
+            return true;
         }
 
         messageQueue->AddMessage(

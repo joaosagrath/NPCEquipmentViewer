@@ -28,6 +28,12 @@ namespace
         std::vector<EquipmentItem> items;
     };
 
+    struct KeywordOption
+    {
+        std::string_view keyword;
+        std::string_view description;
+    };
+
     constexpr std::array<SlotDescription, 32> kBipedSlots{
         SlotDescription{ BipedSlot::kHead, 30 },
         SlotDescription{ BipedSlot::kHair, 31 },
@@ -61,6 +67,14 @@ namespace
         SlotDescription{ BipedSlot::kModArmRight, 59 },
         SlotDescription{ BipedSlot::kModMisc2, 60 },
         SlotDescription{ BipedSlot::kFX01, 61 }
+    };
+
+    constexpr std::array<KeywordOption, 5> kKeywordOptions{
+        KeywordOption{ "Modesty", "top and bottom exposed" },
+        KeywordOption{ "NoModesty", "nothing exposed" },
+        KeywordOption{ "NoModestyTop", "only top exposed" },
+        KeywordOption{ "NoModestyBottom", "only bottom exposed" },
+        KeywordOption{ "NoModestyAll", "fully covered" }
     };
 
     std::string FormatFormID(const RE::TESForm* form)
@@ -261,6 +275,12 @@ namespace
                 "Restart Skyrim to apply it.");
             break;
 
+        case Result::kUpdated:
+            RE::DebugNotification(
+                "Item keyword updated in Custom_modesty_KID.ini. "
+                "Restart Skyrim to apply it.");
+            break;
+
         case Result::kDuplicate:
             RE::DebugNotification(
                 "This item is already present in "
@@ -280,11 +300,64 @@ namespace
         }
     }
 
+    std::string BuildKeywordLabel(const KeywordOption& option)
+    {
+        return std::string(option.keyword) + " | " +
+               std::string(option.description);
+    }
+
     void QueueGameTask(std::function<void()> task)
     {
         if (const auto* taskInterface = SKSE::GetTaskInterface();
             taskInterface != nullptr) {
             taskInterface->AddTask(std::move(task));
+        }
+    }
+
+    void ShowKeywordSelectionMenu(
+        const std::shared_ptr<MenuState>& state,
+        const std::size_t itemIndex)
+    {
+        if (!state || itemIndex >= state->items.size()) {
+            return;
+        }
+
+        std::vector<std::string> entries;
+        entries.reserve(kKeywordOptions.size());
+
+        for (const auto& option : kKeywordOptions) {
+            entries.push_back(BuildKeywordLabel(option));
+        }
+
+        const auto title =
+            "Select keyword for " + state->items[itemIndex].displayName;
+
+        const bool opened =
+            NPCEquipmentViewer::EquipmentSelectionMenu::Show(
+                title,
+                std::move(entries),
+                [state, itemIndex](const std::size_t selectedIndex) {
+                    if (itemIndex >= state->items.size() ||
+                        selectedIndex >= kKeywordOptions.size()) {
+                        return;
+                    }
+
+                    QueueGameTask([state, itemIndex, selectedIndex]() {
+                        const auto& item = state->items[itemIndex];
+                        const auto& keyword = kKeywordOptions[selectedIndex];
+                        const auto result =
+                            NPCEquipmentViewer::KidWriter::AddArmor(
+                                item.armor,
+                                item.displayName,
+                                keyword.keyword,
+                                keyword.description);
+                        NotifyWriteResult(result);
+                    });
+                });
+
+        if (!opened) {
+            RE::DebugNotification(
+                "Could not open the keyword selection menu.");
         }
     }
 
@@ -315,12 +388,7 @@ namespace
                     }
 
                     QueueGameTask([state, selectedIndex]() {
-                        const auto& item = state->items[selectedIndex];
-                        const auto result =
-                            NPCEquipmentViewer::KidWriter::AddArmor(
-                                item.armor,
-                                item.displayName);
-                        NotifyWriteResult(result);
+                        ShowKeywordSelectionMenu(state, selectedIndex);
                     });
                 });
 

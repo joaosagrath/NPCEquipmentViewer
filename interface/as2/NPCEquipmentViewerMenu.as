@@ -296,7 +296,7 @@ class NPCEquipmentViewerMenu
         rowBackground5 = CreateRowBackground("rowBackground5");
         rowBackground6 = CreateRowBackground("rowBackground6");
         rowBackground7 = CreateRowBackground("rowBackground7");
-        rowBackground8 = CreateRowBackground("rowBackkground8");
+        rowBackground8 = CreateRowBackground("rowBackground8");
         rowBackground9 = CreateRowBackground("rowBackground9");
 
         rowField0 = CreateRowField("rowField0", 0);
@@ -380,8 +380,17 @@ class NPCEquipmentViewerMenu
                 rowY,
                 CONTENT_WIDTH,
                 ROW_HEIGHT - 2,
-                0xFFFFFF,
-                48);
+                0x000000,
+                72);
+
+            DrawRectangle(
+                background,
+                CONTENT_X,
+                rowY,
+                CONTENT_WIDTH,
+                ROW_HEIGHT - 2,
+                0xC8A24A,
+                42);
 
             DrawRectangle(
                 background,
@@ -389,7 +398,7 @@ class NPCEquipmentViewerMenu
                 rowY,
                 7,
                 ROW_HEIGHT - 2,
-                0xFFFFFF,
+                0xFFE6A3,
                 100);
 
             DrawRectangle(
@@ -398,7 +407,7 @@ class NPCEquipmentViewerMenu
                 rowY,
                 7,
                 ROW_HEIGHT - 2,
-                0xFFFFFF,
+                0xFFE6A3,
                 100);
 
             DrawRectangleOutline(
@@ -407,8 +416,8 @@ class NPCEquipmentViewerMenu
                 rowY,
                 CONTENT_WIDTH,
                 ROW_HEIGHT - 2,
-                0xFFFFFF,
-                95,
+                0xFFE6A3,
+                100,
                 2);
         } else {
             DrawRectangle(
