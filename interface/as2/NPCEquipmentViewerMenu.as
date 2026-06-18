@@ -37,6 +37,12 @@ class NPCEquipmentViewerMenu
     private static var ROW_START_Y:Number = 183;
     private static var ROW_HEIGHT:Number = 36;
     private static var FOOTER_Y:Number = 567;
+    private static var NORMAL_ROW_TEXT_SIZE:Number = 24;
+    private static var SELECTED_ROW_TEXT_SIZE:Number = 26;
+    private static var MINIMUM_ROW_TEXT_SIZE:Number = 15;
+    private static var NORMAL_ROW_TEXT_COLOR:Number = 0xFFFFFF;
+    private static var SELECTED_ROW_TEXT_COLOR:Number = 0xFFCC00;
+    private static var SELECTED_ROW_MARKER:String = "> ";
 
     function NPCEquipmentViewerMenu(rootClip:MovieClip)
     {
@@ -207,10 +213,10 @@ class NPCEquipmentViewerMenu
 
         SetFittedText(
             field,
-            rowText,
-            24,
-            15,
-            selected ? 0xFFF1B8 : 0xFFFFFF);
+            selected ? SELECTED_ROW_MARKER + rowText : rowText,
+            selected ? SELECTED_ROW_TEXT_SIZE : NORMAL_ROW_TEXT_SIZE,
+            MINIMUM_ROW_TEXT_SIZE,
+            selected ? SELECTED_ROW_TEXT_COLOR : NORMAL_ROW_TEXT_COLOR);
 
         return 1;
     }
@@ -369,66 +375,7 @@ class NPCEquipmentViewerMenu
         selected:Boolean):Void
     {
         background.clear();
-
-        var rowY:Number =
-            ROW_START_Y + (index * ROW_HEIGHT);
-
-        if (selected) {
-            DrawRectangle(
-                background,
-                CONTENT_X,
-                rowY,
-                CONTENT_WIDTH,
-                ROW_HEIGHT - 2,
-                0x000000,
-                72);
-
-            DrawRectangle(
-                background,
-                CONTENT_X,
-                rowY,
-                CONTENT_WIDTH,
-                ROW_HEIGHT - 2,
-                0xC8A24A,
-                42);
-
-            DrawRectangle(
-                background,
-                CONTENT_X,
-                rowY,
-                7,
-                ROW_HEIGHT - 2,
-                0xFFE6A3,
-                100);
-
-            DrawRectangle(
-                background,
-                CONTENT_X + CONTENT_WIDTH - 7,
-                rowY,
-                7,
-                ROW_HEIGHT - 2,
-                0xFFE6A3,
-                100);
-
-            DrawRectangleOutline(
-                background,
-                CONTENT_X,
-                rowY,
-                CONTENT_WIDTH,
-                ROW_HEIGHT - 2,
-                0xFFE6A3,
-                100,
-                2);
-        } else {
-            DrawRectangle(
-                background,
-                CONTENT_X,
-                rowY,
-                CONTENT_WIDTH,
-                ROW_HEIGHT - 2,
-                0x000000,
-                12);
-        }
+        background._visible = false;
     }
 
     private function SetFittedText(
