@@ -2,38 +2,39 @@
 
 Plugin SKSE para Skyrim Special Edition/Anniversary Edition.
 
-Ao colocar um NPC no crosshair e pressionar a tecla configurada, o mod abre uma lista vertical com as armaduras, roupas, escudos e acessórios equipados pelo NPC. Ao confirmar um item, o mod adiciona automaticamente uma regra ao arquivo `Custom_modesty_KID.ini`.
+Ao colocar um NPC no crosshair e pressionar a tecla configurada, o mod abre um menu Scaleform próprio com as armaduras, roupas, escudos e acessórios equipados pelo NPC. Ao confirmar um item, o mod adiciona automaticamente uma regra ao arquivo `Custom_modesty_KID.ini`.
 
 ## Recursos
 
 - alvo identificado pelo crosshair;
 - tecla configurável por arquivo INI;
+- menu Scaleform próprio, sem depender do UIExtensions;
 - lista vertical navegável por teclado ou controle;
-- exibição simplificada com nome e slots do equipamento;
-- lista ampliada em 50% para facilitar a leitura;
+- dez itens visíveis por página, com rolagem automática;
+- texto centralizado em toda a largura da janela;
+- redução automática do tamanho da fonte quando um nome realmente excede a largura disponível;
+- exibição configurável de tipo, slots e FormID;
 - roupas, armaduras, escudos e acessórios equipados;
 - slots de armadura entre 30 e 61;
 - criação automática de `Custom_modesty_KID.ini`;
 - regras KID usando FormID local e plugin de origem;
 - comentário com nome e FormID antes de cada regra;
 - prevenção de entradas duplicadas;
-- sem ESP.
+- sem ESP;
+- sem scripts Papyrus;
+- sem UIExtensions.
 
-## Dependências para usar o mod compilado
+## Dependências
 
 - Skyrim Script Extender, correspondente à versão do Skyrim;
-- Address Library for SKSE Plugins, correspondente à versão do Skyrim;
-- UIExtensions, usado para exibir a lista vertical navegável.
-
-O projeto usa CommonLibSSE-NG, cuja proposta é gerar um único plugin para SE/AE/VR. O código desta versão foi pensado para Skyrim SE/AE; Skyrim VR não foi validado.
+- Address Library for SKSE Plugins, correspondente à versão do Skyrim.
 
 ## Estrutura instalada
 
 ```text
 Data/
-├── Scripts/
-│   ├── NPCEquipmentViewerMenu.pex
-│   └── NPCEquipmentViewerNative.pex
+├── Interface/
+│   └── NPCEquipmentViewerMenu.swf
 └── SKSE/
     └── Plugins/
         ├── NPCEquipmentViewer.dll
@@ -48,18 +49,19 @@ Data/Custom_modesty_KID.ini
 
 ## Uso
 
-1. Instale e ative o UIExtensions.
-2. Inicie o Skyrim pelo SKSE.
-3. Coloque um NPC no centro do crosshair.
-4. Pressione `H`.
-5. Navegue verticalmente pelos equipamentos usando o teclado ou controle.
+1. Inicie o Skyrim pelo SKSE.
+2. Coloque um NPC no centro do crosshair.
+3. Pressione `H`.
+4. Navegue usando as setas, o direcional ou o analógico do controle.
+5. Use `Page Up`, `Page Down`, esquerda ou direita para avançar mais rapidamente.
 6. Pressione `Enter` ou o botão de confirmação do controle para adicionar o item ao KID.
-7. Reinicie o Skyrim para o Keyword Item Distributor processar a nova regra.
+7. Pressione `Esc` ou o botão de voltar para fechar.
+8. Reinicie o Skyrim para o Keyword Item Distributor processar uma nova regra.
 
-Cada item é exibido neste formato:
+Com a configuração padrão, cada item é exibido assim:
 
 ```text
-DXFII WildDreams All but Bra_Panty | S:32
+Apprentice Robes of Conjuration & Illusion | Slot:32
 ```
 
 ## Formato gerado
@@ -95,13 +97,54 @@ ShowItemType=false
 
 `0x23` é o código DirectInput da tecla `H`. Consulte `KEYCODES_PT-BR.md` para outros códigos.
 
-A lista sempre exibe somente o nome do item e seus slots. As opções antigas de tipo e FormID foram mantidas no arquivo apenas por compatibilidade.
+As opções abaixo aceitam `true` ou `false`:
+
+- `ShowFormID`: exibe o FormID do equipamento;
+- `ShowSlots`: exibe os slots usando o texto `Slot:`;
+- `ShowItemType`: exibe o tipo detectado entre colchetes.
 
 O Skyrim deve ser reiniciado depois de alterar o INI.
 
+## Menu Scaleform
+
+O menu é compilado a partir destes arquivos:
+
+```text
+interface/
+├── NPCEquipmentViewerMenu.xml
+└── as2/
+    └── NPCEquipmentViewerMenu.as
+```
+
+O GitHub Actions gera:
+
+```text
+Interface/NPCEquipmentViewerMenu.swf
+```
+
+A largura do campo de texto, o alinhamento, a seleção, o fundo e a redução automática da fonte pertencem ao próprio menu. Nenhum elemento interno do `listmenu.swf` do UIExtensions é alterado.
+
+## Log de diagnóstico
+
+O plugin inicializa explicitamente o sistema de log e tenta criar `NPCEquipmentViewer.log` nesta ordem:
+
+```text
+Documents\My Games\Skyrim Special Edition\SKSE\NPCEquipmentViewer.log
+Data\SKSE\Plugins\NPCEquipmentViewer.log
+Skyrim Special Edition\NPCEquipmentViewer.log
+```
+
+As mensagens relacionadas ao menu usam o prefixo:
+
+```text
+[MenuDiagnostic]
+```
+
+O log informa os equipamentos encontrados, as linhas enviadas ao SWF, o retorno do ActionScript e o motivo exato quando alguma etapa falhar.
+
 ## Compilação no Windows
 
-### Requisitos
+### Requisitos da DLL
 
 - Visual Studio 2022 com **Desenvolvimento para Desktop com C++**;
 - CMake;
@@ -127,7 +170,7 @@ Valor: C:\Ferramentas\vcpkg
 
 Feche e abra novamente o terminal depois de criar a variável.
 
-### Compilar
+### Compilar a DLL
 
 Abra o **Developer PowerShell for VS 2022**, entre na pasta do projeto e execute:
 
@@ -135,30 +178,10 @@ Abra o **Developer PowerShell for VS 2022**, entre na pasta do projeto e execute
 .\build-release.bat
 ```
 
-O pacote será criado em:
+A DLL e o INI serão criados em:
 
 ```text
-build\release\package
+build\release\package\SKSE\Plugins
 ```
 
-## Instalação automática durante a compilação
-
-Para copiar automaticamente o mod para o Mod Organizer 2 ou Vortex, crie a variável:
-
-```text
-SKYRIM_MODS_FOLDER=X:\caminho\para\mods
-```
-
-O projeto criará a pasta:
-
-```text
-NPC Equipment Viewer\SKSE\Plugins
-```
-
-Também é possível definir:
-
-```text
-SKYRIM_FOLDER=X:\SteamLibrary\steamapps\common\Skyrim Special Edition
-```
-
-Nesse caso, os arquivos serão copiados diretamente para a pasta `Data` do jogo.
+O workflow do GitHub também compila o SWF e monta automaticamente o ZIP completo.
