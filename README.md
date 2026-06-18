@@ -54,9 +54,10 @@ Data/Custom_modesty_KID.ini
 3. Pressione `H`.
 4. Navegue usando as setas, o direcional ou o analógico do controle.
 5. Use `Page Up`, `Page Down`, esquerda ou direita para avançar mais rapidamente.
-6. Pressione `Enter` ou o botão de confirmação do controle para adicionar o item ao KID.
-7. Pressione `Esc` ou o botão de voltar para fechar.
-8. Reinicie o Skyrim para o Keyword Item Distributor processar uma nova regra.
+6. Pressione `Enter` ou o botão de confirmação do controle para escolher o item.
+7. Escolha a keyword que será gravada para o item selecionado.
+8. Pressione `Esc` ou o botão de voltar para fechar.
+9. Reinicie o Skyrim para o Keyword Item Distributor processar uma nova regra.
 
 Com a configuração padrão, cada item é exibido assim:
 
@@ -70,12 +71,21 @@ Exemplo:
 
 ```ini
 ; Steel Armor | ID:0x013955
+; NoModestyAll: fully covered
 Keyword = NoModestyAll|Armor|0x013955~Skyrim.esm
 ```
 
 O comentário facilita a identificação manual do item. A regra usa o FormID local e o plugin de origem, portanto não depende do idioma usado pelo jogo.
 
-Caso o arquivo ainda não exista, ele será criado automaticamente. Uma regra já existente não será adicionada novamente.
+Keywords disponíveis:
+
+- `Modesty`: top and bottom exposed;
+- `NoModesty`: nothing exposed;
+- `NoModestyTop`: only top exposed;
+- `NoModestyBottom`: only bottom exposed;
+- `NoModestyAll`: fully covered.
+
+Caso o arquivo ainda não exista, ele será criado automaticamente. Uma regra já existente para a mesma keyword não será adicionada novamente. Se o item já existir com outra keyword, a regra será atualizada para a nova seleção.
 
 ## Configuração
 

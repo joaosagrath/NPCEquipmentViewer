@@ -296,7 +296,7 @@ class NPCEquipmentViewerMenu
         rowBackground5 = CreateRowBackground("rowBackground5");
         rowBackground6 = CreateRowBackground("rowBackground6");
         rowBackground7 = CreateRowBackground("rowBackground7");
-        rowBackground8 = CreateRowBackground("rowBackkground8");
+        rowBackground8 = CreateRowBackground("rowBackground8");
         rowBackground9 = CreateRowBackground("rowBackground9");
 
         rowField0 = CreateRowField("rowField0", 0);

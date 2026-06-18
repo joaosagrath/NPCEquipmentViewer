@@ -8,6 +8,7 @@ namespace NPCEquipmentViewer
         enum class Result
         {
             kAdded,
+            kUpdated,
             kDuplicate,
             kInvalidArmor,
             kFileError
@@ -22,7 +23,9 @@ namespace NPCEquipmentViewer
 
         static WriteResult AddArmor(
             RE::TESObjectARMO* armor,
-            const std::string& displayName);
+            const std::string& displayName,
+            std::string_view keyword,
+            std::string_view keywordDescription);
 
         [[nodiscard]] static std::filesystem::path GetOutputPath();
     };
