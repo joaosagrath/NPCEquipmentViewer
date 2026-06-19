@@ -300,10 +300,47 @@ namespace
         }
     }
 
-    std::string BuildKeywordLabel(const KeywordOption& option)
+    bool ArmorHasKeyword(
+        const RE::TESObjectARMO* armor,
+        const std::string_view keywordEditorID)
     {
-        return std::string(option.keyword) + " | " +
-               std::string(option.description);
+        if (armor == nullptr ||
+            armor->keywords == nullptr ||
+            keywordEditorID.empty()) {
+            return false;
+        }
+
+        for (std::uint32_t index = 0; index < armor->numKeywords; ++index) {
+            const auto* keyword = armor->keywords[index];
+            if (keyword == nullptr) {
+                continue;
+            }
+
+            const auto* editorID = keyword->GetFormEditorID();
+            if (editorID == nullptr) {
+                continue;
+            }
+
+            if (std::string_view(editorID) == keywordEditorID) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    std::string BuildKeywordLabel(
+        const KeywordOption& option,
+        const bool isCurrent)
+    {
+        auto label = std::string(option.keyword) + " | " +
+                     std::string(option.description);
+
+        if (isCurrent) {
+            label += " [CURRENT]";
+        }
+
+        return label;
     }
 
     void QueueGameTask(std::function<void()> task)
@@ -325,8 +362,13 @@ namespace
         std::vector<std::string> entries;
         entries.reserve(kKeywordOptions.size());
 
+        const auto* armor = state->items[itemIndex].armor;
+
         for (const auto& option : kKeywordOptions) {
-            entries.push_back(BuildKeywordLabel(option));
+            entries.push_back(
+                BuildKeywordLabel(
+                    option,
+                    ArmorHasKeyword(armor, option.keyword)));
         }
 
         const auto title =
