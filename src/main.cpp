@@ -9,6 +9,9 @@ extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 namespace
 {
+    constexpr std::string_view kLogFileName =
+        "Equipment Viewer and KID Writer.log";
+
     std::filesystem::path GetPluginDirectory()
     {
         std::array<wchar_t, MAX_PATH> modulePath{};
@@ -51,7 +54,7 @@ namespace
             return true;
         } catch (const std::exception& exception) {
             const auto message = std::string(
-                "NPC Equipment Viewer could not initialize log at '") +
+                "Equipment Viewer and KID Writer could not initialize log at '") +
                 logPath.string() +
                 "': " +
                 exception.what() +
@@ -68,19 +71,19 @@ namespace
         if (const auto logDirectory = SKSE::log::log_directory();
             logDirectory.has_value()) {
             candidatePaths.push_back(
-                *logDirectory / "NPCEquipmentViewer.log");
+                *logDirectory / kLogFileName);
         }
 
         if (const auto pluginDirectory = GetPluginDirectory();
             !pluginDirectory.empty()) {
             candidatePaths.push_back(
-                pluginDirectory / "NPCEquipmentViewer.log");
+                pluginDirectory / kLogFileName);
         }
 
         try {
             candidatePaths.push_back(
                 std::filesystem::current_path() /
-                "NPCEquipmentViewer.log");
+                kLogFileName);
         } catch (const std::exception&) {
         }
 
@@ -91,7 +94,7 @@ namespace
         }
 
         OutputDebugStringA(
-            "NPC Equipment Viewer could not create a log file in any candidate directory.\n");
+            "Equipment Viewer and KID Writer could not create a log file in any candidate directory.\n");
     }
 }
 
@@ -101,7 +104,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse)
     InitializeLogging();
 
     SKSE::log::info(
-        "[MenuDiagnostic] NPC Equipment Viewer plugin loading");
+        "[MenuDiagnostic] Equipment Viewer and KID Writer plugin loading");
 
     NPCEquipmentViewer::Settings::GetSingleton().Load();
 

@@ -233,7 +233,7 @@ class NPCEquipmentViewerMenu
             rowField0,
             "Equipment rows could not be rendered. Error " +
                 String(errorCode) +
-                ". Check NPCEquipmentViewer.log.",
+                ". Check Equipment Viewer and KID Writer.log.",
             22,
             14,
             0xFFAAAA);
