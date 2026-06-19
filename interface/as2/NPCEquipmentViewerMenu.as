@@ -208,9 +208,9 @@ class NPCEquipmentViewerMenu
         SetFittedText(
             field,
             rowText,
-            24,
+            selected ? 26 : 24,
             15,
-            selected ? 0xFFF1B8 : 0xFFFFFF);
+            selected ? 0xFFCC00 : 0xFFFFFF);
 
         return 1;
     }
@@ -369,66 +369,7 @@ class NPCEquipmentViewerMenu
         selected:Boolean):Void
     {
         background.clear();
-
-        var rowY:Number =
-            ROW_START_Y + (index * ROW_HEIGHT);
-
-        if (selected) {
-            DrawRectangle(
-                background,
-                CONTENT_X,
-                rowY,
-                CONTENT_WIDTH,
-                ROW_HEIGHT - 2,
-                0x000000,
-                72);
-
-            DrawRectangle(
-                background,
-                CONTENT_X,
-                rowY,
-                CONTENT_WIDTH,
-                ROW_HEIGHT - 2,
-                0xC8A24A,
-                42);
-
-            DrawRectangle(
-                background,
-                CONTENT_X,
-                rowY,
-                7,
-                ROW_HEIGHT - 2,
-                0xFFE6A3,
-                100);
-
-            DrawRectangle(
-                background,
-                CONTENT_X + CONTENT_WIDTH - 7,
-                rowY,
-                7,
-                ROW_HEIGHT - 2,
-                0xFFE6A3,
-                100);
-
-            DrawRectangleOutline(
-                background,
-                CONTENT_X,
-                rowY,
-                CONTENT_WIDTH,
-                ROW_HEIGHT - 2,
-                0xFFE6A3,
-                100,
-                2);
-        } else {
-            DrawRectangle(
-                background,
-                CONTENT_X,
-                rowY,
-                CONTENT_WIDTH,
-                ROW_HEIGHT - 2,
-                0x000000,
-                12);
-        }
+        background._visible = false;
     }
 
     private function SetFittedText(
