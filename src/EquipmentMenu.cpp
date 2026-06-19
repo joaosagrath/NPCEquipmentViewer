@@ -72,8 +72,8 @@ namespace
     constexpr std::array<KeywordOption, 5> kKeywordOptions{
         KeywordOption{ "Modesty", "top and bottom exposed" },
         KeywordOption{ "NoModesty", "nothing exposed" },
-        KeywordOption{ "NoModestyTop", "only top exposed" },
-        KeywordOption{ "NoModestyBottom", "only bottom exposed" },
+        KeywordOption{ "NoModestyTop", "top covered" },
+        KeywordOption{ "NoModestyBottom", "bottom covered" },
         KeywordOption{ "NoModestyAll", "fully covered" }
     };
 

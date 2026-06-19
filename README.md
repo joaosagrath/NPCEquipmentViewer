@@ -1,4 +1,4 @@
-# NPC Equipment Viewer
+# Equipment Viewer and KID Writer
 
 Plugin SKSE para Skyrim Special Edition/Anniversary Edition.
 
@@ -81,8 +81,8 @@ Keywords disponíveis:
 
 - `Modesty`: top and bottom exposed;
 - `NoModesty`: nothing exposed;
-- `NoModestyTop`: only top exposed;
-- `NoModestyBottom`: only bottom exposed;
+- `NoModestyTop`: top covered;
+- `NoModestyBottom`: bottom covered;
 - `NoModestyAll`: fully covered.
 
 Caso o arquivo ainda não exista, ele será criado automaticamente. Uma regra já existente para a mesma keyword não será adicionada novamente. Se o item já existir com outra keyword, a regra será atualizada para a nova seleção.
@@ -136,12 +136,12 @@ A largura do campo de texto, o alinhamento, a seleção, o fundo e a redução a
 
 ## Log de diagnóstico
 
-O plugin inicializa explicitamente o sistema de log e tenta criar `NPCEquipmentViewer.log` nesta ordem:
+O plugin inicializa explicitamente o sistema de log e tenta criar `Equipment Viewer and KID Writer.log` nesta ordem:
 
 ```text
-Documents\My Games\Skyrim Special Edition\SKSE\NPCEquipmentViewer.log
-Data\SKSE\Plugins\NPCEquipmentViewer.log
-Skyrim Special Edition\NPCEquipmentViewer.log
+Documents\My Games\Skyrim Special Edition\SKSE\Equipment Viewer and KID Writer.log
+Data\SKSE\Plugins\Equipment Viewer and KID Writer.log
+Skyrim Special Edition\Equipment Viewer and KID Writer.log
 ```
 
 As mensagens relacionadas ao menu usam o prefixo:

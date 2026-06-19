@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(NPCEquipmentViewer VERSION 2.0.5 LANGUAGES CXX)
+project(NPCEquipmentViewer VERSION 2.0.6 LANGUAGES CXX)
 
 if(DEFINED ENV{SKYRIM_FOLDER} AND IS_DIRECTORY "$ENV{SKYRIM_FOLDER}/Data")
     set(OUTPUT_FOLDER "$ENV{SKYRIM_FOLDER}/Data")
 endif()
 
 if(DEFINED ENV{SKYRIM_MODS_FOLDER} AND IS_DIRECTORY "$ENV{SKYRIM_MODS_FOLDER}")
-    set(OUTPUT_FOLDER "$ENV{SKYRIM_MODS_FOLDER}/NPC Equipment Viewer")
+    set(OUTPUT_FOLDER "$ENV{SKYRIM_MODS_FOLDER}/Equipment Viewer and KID Writer")
 endif()
 
 find_package(directxtk CONFIG REQUIRED)
